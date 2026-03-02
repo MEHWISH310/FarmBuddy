@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FarmBuddy - AI Farming Assistant</title>
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Theme Toggle -->
+    <button id="themeToggle" class="theme-toggle">
+        <i class="fas fa-sun"></i>
+        <i class="fas fa-moon" style="display: none;"></i>
+    </button>
+
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">
+                <img src="./image.png" alt="FarmBuddy Logo" class="logo-img" width="100" height="90">
+                <div>
+                    <h1>FarmBuddy</h1>
+                    <p>Intelligent Agricultural Assistant</p>
+                </div>
+            </div>
+            
+            <div class="header-controls">
+                <select class="language-select">
+                    <option value="en">🇬🇧 English</option>
+                    <option value="hi">🇮🇳 हिन्दी</option>
+                    <option value="ta">🇮🇳 தமிழ்</option>
+                    <option value="te">🇮🇳 తెలుగు</option>
+                    <option value="bn">🇮🇳 বাংলা</option>
+                </select>
+
+                <button class="emergency-btn">
+                    <i class="fas fa-phone-alt"></i>
+                    <span>Emergency</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Weather Widget -->
+        <div class="weather-widget">
+            <i class="fas fa-sun"></i>
+            <div class="weather-info">
+                <span class="weather-label">Local Weather</span>
+                <span class="weather-value">28°C | Sunny</span>
+            </div>
+        </div>
+
+        <!-- Hero -->
+        <div class="hero-section">
+            <h2>Your AI-Powered Farming Companion</h2>
+            <p>Get expert advice in your preferred language</p>
+        </div>
+
+        <!-- Input Section -->
+        <div class="input-section">
+            <textarea id="queryInput" rows="3" placeholder="Ask your farming question in any language..."></textarea>
+            
+            <button class="voice-btn" id="voiceBtn">
+                <i class="fas fa-microphone"></i>
+                <span>Click to Speak</span>
+            </button>
+
+            <div class="upload-grid">
+                <div class="upload-box" onclick="document.getElementById('imageUpload').click()">
+                    <i class="fas fa-camera"></i>
+                    <p>Upload Photos</p>
+                    <input type="file" id="imageUpload" accept="image/*" multiple style="display: none;">
+                </div>
+                <div class="upload-box" onclick="document.getElementById('videoUpload').click()">
+                    <i class="fas fa-video"></i>
+                    <p>Record Video</p>
+                    <input type="file" id="videoUpload" accept="video/*" style="display: none;">
+                </div>
+            </div>
+
+            <!-- Image Preview Grid -->
+            <div id="imagePreview" class="image-preview-grid"></div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <div class="action-card" onclick="setQuery('crop')">
+                <i class="fas fa-seedling"></i>
+                <h4>Crop Advisory</h4>
+                <p>Expert guidance</p>
+            </div>
+            <div class="action-card" onclick="setQuery('market')">
+                <i class="fas fa-chart-line"></i>
+                <h4>Market Prices</h4>
+                <p>Real-time rates</p>
+            </div>
+            <div class="action-card" onclick="setQuery('schemes')">
+                <i class="fas fa-file-alt"></i>
+                <h4>Govt Schemes</h4>
+                <p>Subsidies</p>
+            </div>
+            <div class="action-card" onclick="setQuery('disease')">
+                <i class="fas fa-search"></i>
+                <h4>Disease Detection</h4>
+                <p>Identify issues</p>
+            </div>
+        </div>
+
+        <!-- Response Area -->
+        <div id="responseArea">
+            <!-- Loading State -->
+            <div id="loading" class="loading-state" style="display: none;">
+                <div class="loading-spinner"></div>
+                <p>Analyzing your query...</p>
+                <div class="loading-icons">
+                    <i class="fas fa-seedling"></i>
+                    <i class="fas fa-sun"></i>
+                    <i class="fas fa-cloud-rain"></i>
+                </div>
+            </div>
+
+            <!-- Sample Response -->
+            <div class="response-card" id="sampleResponse">
+                <div class="response-header">
+                    <div class="avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div>
+                        <h4>FarmBuddy AI</h4>
+                        <p class="time">2 minutes ago</p>
+                    </div>
+                </div>
+                <div class="response-content">
+                    <p>For tomato blight, here's what you need to do:</p>
+                    <div class="info-box">
+                        <p><i class="fas fa-check-circle"></i> Remove infected leaves immediately</p>
+                        <p><i class="fas fa-check-circle"></i> Apply copper-based fungicide every 7 days</p>
+                        <p><i class="fas fa-check-circle"></i> Water at base, avoid wetting leaves</p>
+                    </div>
+                </div>
+                <div class="response-footer">
+                    <button class="listen-btn" onclick="textToSpeech(this)">
+                        <i class="fas fa-volume-up"></i> Listen
+                    </button>
+                    <div class="response-actions">
+                        <button onclick="shareResponse(this)"><i class="fas fa-share-alt"></i></button>
+                        <button onclick="bookmarkResponse(this)"><i class="far fa-bookmark"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="height: 80px;"></div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <button class="nav-item active">
+            <i class="fas fa-home"></i>
+            <span>Home</span>
+        </button>
+        <button class="nav-item">
+            <i class="fas fa-history"></i>
+            <span>History</span>
+        </button>
+        <button class="fab" id="fabButton">
+            <i class="fas fa-microphone"></i>
+        </button>
+        <button class="nav-item">
+            <i class="fas fa-bookmark"></i>
+            <span>Saved</span>
+        </button>
+        <button class="nav-item">
+            <i class="fas fa-user"></i>
+            <span>Profile</span>
+        </button>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>

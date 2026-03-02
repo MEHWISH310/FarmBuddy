@@ -3,35 +3,47 @@ from flask_cors import CORS
 import json
 import os
 import sys
-# Add at top with other imports
-from vision.predict_disease import DiseasePredictor
-import os
 from werkzeug.utils import secure_filename
 
-# Add path for imports
+# Add the current directory to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Import your modules
+# Get absolute paths for your project
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(BACKEND_DIR)  # FarmBuddy folder
+DATA_DIR = os.path.join(PROJECT_ROOT, 'data')
+RAW_DATA_DIR = os.path.join(DATA_DIR, 'raw_data')
+UPLOAD_DIR = os.path.join(PROJECT_ROOT, 'uploads', 'images')
+
+# Create upload directory if it doesn't exist
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
 from nlp.translator import LanguageTranslator
 from data_processor.analyze_prices import PriceAnalyzer
+from vision.predict_disease import DiseasePredictor
 
-# Initialize Flask app
 app = Flask(__name__)
-CORS(app)  # Enable CORS for frontend
+# Updated CORS to include all possible origins
+CORS(app, origins=[
+    'http://127.0.0.1:5500', 
+    'http://localhost:5500', 
+    'http://localhost:8000',
+    'http://127.0.0.1:5500/frontend',
+    'http://localhost:5500/frontend'
+])
 
-# Initialize translators and analyzers
+# Initialize components
 translator = LanguageTranslator()
 price_analyzer = PriceAnalyzer()
+disease_predictor = DiseasePredictor()
 
-# ============================================
-# MARKET PRICE ENDPOINTS
-# ============================================
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/api/price', methods=['GET'])
 def get_price():
-    """Get price for a crop
-    Example: /api/price?crop=onion&state=maharashtra
-    """
     crop = request.args.get('crop')
     state = request.args.get('state')
     market = request.args.get('market')
@@ -44,9 +56,6 @@ def get_price():
 
 @app.route('/api/trend', methods=['GET'])
 def get_trend():
-    """Get price trend
-    Example: /api/trend?crop=onion&state=maharashtra&days=7
-    """
     crop = request.args.get('crop')
     state = request.args.get('state')
     days = int(request.args.get('days', 30))
@@ -59,73 +68,73 @@ def get_trend():
 
 @app.route('/api/report', methods=['GET'])
 def get_report():
-    """Get market summary report"""
     report = price_analyzer.generate_report()
     return jsonify(report)
 
-
-# ============================================
-# SCHEMES ENDPOINTS
-# ============================================
-
 @app.route('/api/schemes', methods=['GET'])
 def get_schemes():
-    """Get all government schemes"""
     try:
-        with open('data/schemes.json', 'r', encoding='utf-8') as f:
-            schemes = json.load(f)
-        return jsonify(schemes)
-    except FileNotFoundError:
-        return jsonify({"error": "Schemes file not found"}), 404
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/schemes/category/<category>', methods=['GET'])
-def get_schemes_by_category(category):
-    """Get schemes by category (income_support, insurance, credit, etc.)"""
-    try:
-        with open('data/schemes.json', 'r', encoding='utf-8') as f:
-            all_schemes = json.load(f)
+        # Try multiple possible locations
+        possible_paths = [
+            os.path.join(RAW_DATA_DIR, 'schemes.json'),
+            os.path.join(DATA_DIR, 'schemes.json'),
+            os.path.join(DATA_DIR, 'schemes', 'schemes.json'),
+            os.path.join(PROJECT_ROOT, 'data', 'schemes.json')
+        ]
         
-        filtered = [s for s in all_schemes if s.get('category') == category]
-        return jsonify(filtered)
+        schemes = None
+        for path in possible_paths:
+            if os.path.exists(path):
+                with open(path, 'r', encoding='utf-8') as f:
+                    schemes = json.load(f)
+                break
+        
+        if schemes is None:
+            return jsonify({"error": "Schemes file not found", "searched_locations": possible_paths}), 404
+            
+        return jsonify(schemes)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
-# ============================================
-# FAQ ENDPOINTS (with translation)
-# ============================================
 
 @app.route('/api/faqs', methods=['GET'])
 def get_faqs():
-    """Get all FAQs in requested language"""
     try:
-        with open('data/raw_data/faq_dataset.json', 'r', encoding='utf-8') as f:
-            faqs = json.load(f)
+        # Try multiple possible locations
+        possible_paths = [
+            os.path.join(RAW_DATA_DIR, 'faq_dataset.json'),
+            os.path.join(DATA_DIR, 'faq_dataset.json'),
+            os.path.join(DATA_DIR, 'faq', 'faq_dataset.json'),
+            os.path.join(PROJECT_ROOT, 'data', 'raw_data', 'faq_dataset.json')
+        ]
         
-        # Get language from query parameter (default: en)
+        faqs = None
+        faq_path = None
+        for path in possible_paths:
+            if os.path.exists(path):
+                faq_path = path
+                with open(path, 'r', encoding='utf-8') as f:
+                    faqs = json.load(f)
+                break
+        
+        if faqs is None:
+            return jsonify({"error": "FAQ file not found", "searched_locations": possible_paths}), 404
+        
         lang = request.args.get('lang', 'en')
         
         if lang == 'en':
             return jsonify(faqs)
         
-        # Translate all FAQs
         translated_faqs = []
         for faq in faqs:
             translated = translator.translate_faq(faq, lang)
             translated_faqs.append(translated)
         
         return jsonify(translated_faqs)
-    
-    except FileNotFoundError:
-        return jsonify({"error": "FAQ file not found"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/faq/search', methods=['GET'])
 def search_faqs():
-    """Search FAQs by keyword"""
     try:
         query = request.args.get('q', '')
         lang = request.args.get('lang', 'en')
@@ -133,88 +142,69 @@ def search_faqs():
         if not query:
             return jsonify({"error": "Please provide search query"}), 400
         
-        with open('data/raw_data/faq_dataset.json', 'r', encoding='utf-8') as f:
-            faqs = json.load(f)
+        # Try multiple possible locations
+        possible_paths = [
+            os.path.join(RAW_DATA_DIR, 'faq_dataset.json'),
+            os.path.join(DATA_DIR, 'faq_dataset.json'),
+            os.path.join(DATA_DIR, 'faq', 'faq_dataset.json'),
+            os.path.join(PROJECT_ROOT, 'data', 'raw_data', 'faq_dataset.json')
+        ]
         
-        # Simple search in English FAQs
+        faqs = None
+        for path in possible_paths:
+            if os.path.exists(path):
+                with open(path, 'r', encoding='utf-8') as f:
+                    faqs = json.load(f)
+                break
+        
+        if faqs is None:
+            return jsonify({"error": "FAQ file not found"}), 404
+        
         results = []
         for faq in faqs:
             if (query.lower() in faq['question'].lower() or 
-                query.lower() in faq['answer'].lower() or
-                any(query.lower() in tag for tag in faq.get('tags', []))):
-                
+                query.lower() in faq['answer'].lower()):
                 if lang == 'en':
                     results.append(faq)
                 else:
                     results.append(translator.translate_faq(faq, lang))
         
         return jsonify(results)
-    
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/faq/<int:faq_id>', methods=['GET'])
-def get_faq(faq_id):
-    """Get single FAQ by ID"""
-    try:
-        lang = request.args.get('lang', 'en')
-        
-        with open('data/raw_data/faq_dataset.json', 'r', encoding='utf-8') as f:
-            faqs = json.load(f)
-        
-        for faq in faqs:
-            if faq['id'] == faq_id:
-                if lang == 'en':
-                    return jsonify(faq)
-                else:
-                    return jsonify(translator.translate_faq(faq, lang))
-        
-        return jsonify({"error": "FAQ not found"}), 404
-    
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-# ============================================
-# CROP ADVISORY ENDPOINTS
-# ============================================
-
-@app.route('/api/advisory', methods=['GET'])
-def get_all_advisory():
-    """Get all crop advisory"""
-    try:
-        with open('data/raw_data/crop_advisory.json', 'r', encoding='utf-8') as f:
-            advisory = json.load(f)
-        return jsonify(advisory)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/advisory/<crop>', methods=['GET'])
 def get_crop_advisory(crop):
-    """Get advisory for specific crop"""
     try:
-        with open('data/raw_data/crop_advisory.json', 'r', encoding='utf-8') as f:
-            advisory = json.load(f)
+        # Try multiple possible locations
+        possible_paths = [
+            os.path.join(RAW_DATA_DIR, 'crop_advisory.json'),
+            os.path.join(DATA_DIR, 'crop_advisory.json'),
+            os.path.join(DATA_DIR, 'advisory', 'crop_advisory.json'),
+            os.path.join(PROJECT_ROOT, 'data', 'raw_data', 'crop_advisory.json')
+        ]
         
-        # Filter by crop (case insensitive)
+        advisory = None
+        for path in possible_paths:
+            if os.path.exists(path):
+                with open(path, 'r', encoding='utf-8') as f:
+                    advisory = json.load(f)
+                break
+        
+        if advisory is None:
+            return jsonify({"error": "Advisory file not found"}), 404
+        
         result = [a for a in advisory if a.get('crop', '').lower() == crop.lower()]
         
         if result:
             return jsonify(result[0])
         else:
             return jsonify({"error": f"No advisory found for {crop}"}), 404
-    
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-# ============================================
-# CHAT ENDPOINT (Main NLP)
-# ============================================
-
 @app.route('/api/chat', methods=['POST'])
 def chat():
-    """Main chat endpoint with NLP pipeline"""
     try:
         data = request.json
         query = data.get('query', '')
@@ -222,35 +212,32 @@ def chat():
         if not query:
             return jsonify({"error": "No query provided"}), 400
         
-        # Step 1: Detect language and translate to English
         english_query, original_lang = translator.translate_to_english(query)
         
-        # Simple intent detection (you can enhance this)
         intent = 'general'
-        if any(word in english_query.lower() for word in ['price', 'rate', 'cost']):
+        if any(word in english_query.lower() for word in ['price', 'rate', 'cost', 'market', 'mandi']):
             intent = 'market_price'
-        elif any(word in english_query.lower() for word in ['scheme', 'yojana', 'subsidy']):
+        elif any(word in english_query.lower() for word in ['scheme', 'yojana', 'subsidy', 'sarkari']):
             intent = 'scheme'
-        elif any(word in english_query.lower() for word in ['disease', 'spot', 'yellow']):
+        elif any(word in english_query.lower() for word in ['disease', 'spot', 'yellow', 'brown', 'leaf', 'fungus']):
             intent = 'disease'
         
-        # Simple entity extraction
         entities = {}
-        crops = ['wheat', 'rice', 'onion', 'potato', 'tomato', 'bajra', 'maize']
+        crops = ['wheat', 'rice', 'onion', 'potato', 'tomato', 'bajra', 'maize', 'cotton', 'sugarcane']
         for crop in crops:
             if crop in english_query.lower():
                 entities['crop'] = crop
                 break
         
-        # Generate response based on intent
         if intent == 'market_price' and entities.get('crop'):
-            response = f"Checking price for {entities['crop']}..."
+            response = f"Checking current market price for {entities['crop']}..."
         elif intent == 'scheme':
-            response = "You can check all government schemes at /api/schemes endpoint"
+            response = "You can check all government schemes at the Schemes section. What specific scheme are you interested in?"
+        elif intent == 'disease':
+            response = "For disease detection, please upload a photo of your crop using the camera button above."
         else:
-            response = "I'm FarmBuddy. Ask me about crop prices, schemes, or upload a photo for disease detection."
+            response = "I'm FarmBuddy, your AI farming assistant. I can help you with:\n• Crop prices and market trends\n• Government schemes and subsidies\n• Disease detection from photos\n• Crop advisory and best practices\n\nHow can I assist you today?"
         
-        # Translate response if needed
         if original_lang != 'en':
             response = translator.translate_text(response, original_lang)
         
@@ -262,76 +249,11 @@ def chat():
             'entities': entities,
             'response': response
         })
-    
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-# ============================================
-# HEALTH CHECK
-# ============================================
-
-@app.route('/api/health', methods=['GET'])
-def health_check():
-    """Check if API is running"""
-    return jsonify({
-        "status": "ok",
-        "message": "FarmBuddy API is running",
-        "endpoints": [
-            "/api/price",
-            "/api/trend",
-            "/api/report",
-            "/api/schemes",
-            "/api/faqs",
-            "/api/faq/search",
-            "/api/advisory",
-            "/api/chat",
-            "/api/health"
-        ]
-    })
-
-
-# ============================================
-# MAIN ENTRY POINT
-# ============================================
-
-if __name__ == '__main__':
-    print("="*50)
-    print("🌾 FarmBuddy API Server Starting...")
-    print("="*50)
-    print("\n✅ Endpoints available:")
-    print("   - GET  /api/health")
-    print("   - GET  /api/price?crop=onion&state=maharashtra")
-    print("   - GET  /api/trend?crop=onion&state=maharashtra")
-    print("   - GET  /api/report")
-    print("   - GET  /api/schemes")
-    print("   - GET  /api/faqs?lang=hi")
-    print("   - GET  /api/faq/search?q=pm-kisan&lang=te")
-    print("   - GET  /api/advisory/wheat")
-    print("   - POST /api/chat")
-    print("\nServer starting on http://localhost:5000")
-    print("="*50)
-    
-    app.run(debug=True, port=5000)
-
-
-
-# Initialize predictor
-disease_predictor = DiseasePredictor()
-
-# Allowed file extensions
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-# ============================================
-# DISEASE DETECTION ENDPOINTS
-# ============================================
-
 @app.route('/api/predict-disease', methods=['POST'])
 def predict_disease():
-    """Predict disease from uploaded image"""
     try:
         if 'image' not in request.files:
             return jsonify({"error": "No image uploaded"}), 400
@@ -345,24 +267,55 @@ def predict_disease():
             return jsonify({"error": "File type not allowed. Use jpg, jpeg, png, gif"}), 400
         
         filename = secure_filename(file.filename)
-        temp_path = os.path.join('uploads/images', filename)
+        temp_path = os.path.join(UPLOAD_DIR, filename)
         file.save(temp_path)
+        
+        # Check if file was saved successfully
+        if not os.path.exists(temp_path):
+            return jsonify({"error": "Failed to save image"}), 500
         
         result = disease_predictor.predict(temp_path)
         
+        # Clean up - remove the file after processing (optional)
+        # os.remove(temp_path)
+        
         return jsonify(result)
-    
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/disease-classes', methods=['GET'])
-def get_disease_classes():
-    """Get all disease classes"""
-    try:
-        classes = list(disease_predictor.class_names.values())
-        return jsonify({
-            'total': len(classes),
-            'classes': classes[:10]  # First 10 only
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Health check endpoint to verify API is running"""
+    return jsonify({
+        "status": "ok", 
+        "message": "FarmBuddy API is running",
+        "paths": {
+            "project_root": PROJECT_ROOT,
+            "data_dir": DATA_DIR,
+            "raw_data_dir": RAW_DATA_DIR,
+            "upload_dir": UPLOAD_DIR
+        }
+    })
+
+@app.route('/', methods=['GET'])
+def home():
+    return jsonify({
+        "message": "FarmBuddy API is running",
+        "endpoints": [
+            "/api/health",
+            "/api/price?crop=onion&state=maharashtra",
+            "/api/schemes",
+            "/api/faqs?lang=hi",
+            "/api/predict-disease (POST)",
+            "/api/chat (POST)"
+        ]
+    })
+
+if __name__ == '__main__':
+    print(f"🚀 FarmBuddy Backend Starting...")
+    print(f"📁 Project Root: {PROJECT_ROOT}")
+    print(f"📁 Data Directory: {DATA_DIR}")
+    print(f"📁 Raw Data Directory: {RAW_DATA_DIR}")
+    print(f"📁 Upload Directory: {UPLOAD_DIR}")
+    print(f"🌐 Server running on http://127.0.0.1:5000")
+    app.run(debug=True, port=5000)

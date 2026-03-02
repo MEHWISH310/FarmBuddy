@@ -13,7 +13,6 @@ class ResponseGenerator:
         self.load_data()
     
     def load_data(self):
-        """Load JSON data files"""
         try:
             with open('data/schemes.json', 'r', encoding='utf-8') as f:
                 self.schemes = json.load(f)
@@ -33,36 +32,27 @@ class ResponseGenerator:
             self.advisory = []
     
     def generate_response(self, query, intent, entities, language='en'):
-        """Generate response based on intent"""
-        
         response = ""
         
         if intent == 'market_price':
             response = self.handle_market_price(entities)
-        
         elif intent == 'disease':
             response = self.handle_disease(entities)
-        
         elif intent == 'scheme':
             response = self.handle_scheme(entities)
-        
         elif intent == 'weather':
             response = self.handle_weather(entities)
-        
         elif intent == 'advisory':
             response = self.handle_advisory(entities)
-        
-        else:  # general
+        else:
             response = self.handle_general()
         
-        # Translate if needed
         if language != 'en':
             response = self.translator.translate_text(response, language)
         
         return response
     
     def handle_market_price(self, entities):
-        """Handle market price queries"""
         crop = entities.get('crop', [None])
         state = entities.get('state', [None])
         
@@ -84,7 +74,6 @@ class ResponseGenerator:
         return f"{crop_name.title()} price in {location} on {date} is ₹{price} per quintal."
     
     def handle_disease(self, entities):
-        """Handle disease queries"""
         crop = entities.get('crop', [None])
         disease = entities.get('disease', [None])
         
@@ -94,17 +83,14 @@ class ResponseGenerator:
         return "Please upload a photo of your crop for disease detection, or describe the symptoms."
     
     def handle_scheme(self, entities):
-        """Handle government scheme queries"""
         if not self.schemes:
             return "Scheme information is currently being updated."
         
-        # Check if specific scheme asked
         query_text = entities.get('text', '').lower()
         for scheme in self.schemes:
             if scheme['name'].lower() in query_text:
                 return f"{scheme['name']}: {scheme['description']}\nBenefit: {scheme['benefit']}\nApply: {scheme['how_to_apply']}"
         
-        # Return top 3 schemes
         top_schemes = self.schemes[:3]
         response = "Popular government schemes:\n"
         for s in top_schemes:
@@ -113,14 +99,11 @@ class ResponseGenerator:
         return response
     
     def handle_weather(self, entities):
-        """Handle weather queries"""
         location = entities.get('state', [None]) or entities.get('market', [None])
         loc_name = location[0] if location and location[0] else "your area"
-        
         return f"Weather information for {loc_name} will be available soon. Currently, you can check market prices or crop advisory."
     
     def handle_advisory(self, entities):
-        """Handle crop advisory queries"""
         crop = entities.get('crop', [None])
         
         if not crop or not crop[0]:
@@ -139,7 +122,6 @@ class ResponseGenerator:
         return f"Advisory for {crop_name} is being updated. Please check later."
     
     def handle_general(self):
-        """Handle general queries"""
         return ("Hello! I'm FarmBuddy, your agricultural assistant.\n\n"
                 "I can help you with:\n"
                 "• Crop prices (e.g., 'onion price in maharashtra')\n"

@@ -65,29 +65,33 @@
 
         <!-- Input Section -->
         <div class="input-section">
-            <textarea id="queryInput" rows="3" placeholder="Ask your farming question in any language..."></textarea>
-            
-            <button class="voice-btn" id="voiceBtn">
-                <i class="fas fa-microphone"></i>
-                <span>Click to Speak</span>
-            </button>
+    <div style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 20px;">
+        <textarea id="queryInput" rows="3" placeholder="Ask your farming question in any language..." style="flex: 1; margin-bottom: 0;"></textarea>
+        <button id="sendBtn" style="background: linear-gradient(135deg, #2e7d32, #4caf50); color: white; border: none; width: 60px; height: 60px; border-radius: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; box-shadow: 0 0 20px rgba(46, 125, 50, 0.2);">
+            <i class="fas fa-paper-plane"></i>
+        </button>
+    </div>
+    
+    <button class="voice-btn" id="voiceBtn">
+        <i class="fas fa-microphone"></i>
+        <span>Click to Speak</span>
+    </button>
 
-            <div class="upload-grid">
-                <div class="upload-box" onclick="document.getElementById('imageUpload').click()">
-                    <i class="fas fa-camera"></i>
-                    <p>Upload Photos</p>
-                    <input type="file" id="imageUpload" accept="image/*" multiple style="display: none;">
-                </div>
-                <div class="upload-box" onclick="document.getElementById('videoUpload').click()">
-                    <i class="fas fa-video"></i>
-                    <p>Record Video</p>
-                    <input type="file" id="videoUpload" accept="video/*" style="display: none;">
-                </div>
-            </div>
-
-            <!-- Image Preview Grid -->
-            <div id="imagePreview" class="image-preview-grid"></div>
+    <div class="upload-grid">
+        <div class="upload-box" onclick="document.getElementById('imageUpload').click()">
+            <i class="fas fa-camera"></i>
+            <p>Upload Photos</p>
+            <input type="file" id="imageUpload" accept="image/*" multiple style="display: none;">
         </div>
+        <div class="upload-box" onclick="document.getElementById('videoUpload').click()">
+            <i class="fas fa-video"></i>
+            <p>Record Video</p>
+            <input type="file" id="videoUpload" accept="video/*" style="display: none;">
+        </div>
+    </div>
+
+    <div id="imagePreview" class="image-preview-grid"></div>
+</div>
 
         <!-- Quick Actions -->
         <div class="quick-actions">

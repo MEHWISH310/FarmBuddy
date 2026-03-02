@@ -56,24 +56,16 @@ class IntentClassifier:
         }
     
     def predict_intent(self, text):
-        """Predict intent of user query"""
         text_lower = text.lower()
-        
-        # Check keywords
         for intent, data in self.intents.items():
             for keyword in data['keywords']:
                 if keyword.lower() in text_lower:
                     return intent, 0.8
-        
-        # Check patterns
         for intent, data in self.intents.items():
             for pattern in data['patterns']:
                 if re.search(pattern, text_lower, re.IGNORECASE):
                     return intent, 0.9
-        
-        # Default
         return 'general', 0.5
     
     def get_all_intents(self):
-        """Return list of all intents"""
         return list(self.intents.keys())

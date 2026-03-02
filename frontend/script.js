@@ -1,52 +1,44 @@
-// ===== FARM BUDDY FRONTEND - BACKEND INTEGRATED =====
-// API Base URL - change this to your backend URL
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'http://127.0.0.1:5000/api';
 
-// ===== ALL 22 CONSTITUTIONAL LANGUAGES OF INDIA =====
 const INDIAN_LANGUAGES = {
-    'as': 'অসমীয়া',      // Assamese
-    'bn': 'বাংলা',        // Bengali
-    'brx': 'बर',          // Bodo
-    'doi': 'डोगरी',       // Dogri
-    'en': 'English',      // English
-    'gu': 'ગુજરાતી',      // Gujarati
-    'hi': 'हिन्दी',        // Hindi
-    'kn': 'ಕನ್ನಡ',        // Kannada
-    'ks': 'कॉशुर',        // Kashmiri
-    'kok': 'कोंकणी',       // Konkani
-    'mai': 'मैथिली',       // Maithili
-    'ml': 'മലയാളം',       // Malayalam
-    'mni': 'মৈতৈলোন্',     // Manipuri
-    'mr': 'मराठी',        // Marathi
-    'ne': 'नेपाली',       // Nepali
-    'or': 'ଓଡ଼ିଆ',        // Odia
-    'pa': 'ਪੰਜਾਬੀ',       // Punjabi
-    'sa': 'संस्कृतम्',     // Sanskrit
-    'sat': 'ᱥᱟᱱᱛᱟᱲᱤ',      // Santali
-    'sd': 'सिन्धी',       // Sindhi
-    'ta': 'தமிழ்',        // Tamil
-    'te': 'తెలుగు',       // Telugu
-    'ur': 'اردو'          // Urdu
+    'as': 'অসমীয়া',
+    'bn': 'বাংলা',
+    'brx': 'बर',
+    'doi': 'डोगरी',
+    'en': 'English',
+    'gu': 'ગુજરાતી',
+    'hi': 'हिन्दी',
+    'kn': 'ಕನ್ನಡ',
+    'ks': 'कॉशुर',
+    'kok': 'कोंकणी',
+    'mai': 'मैथिली',
+    'ml': 'മലയാളം',
+    'mni': 'মৈতৈলোন্',
+    'mr': 'मराठी',
+    'ne': 'नेपाली',
+    'or': 'ଓଡ଼ିଆ',
+    'pa': 'ਪੰਜਾਬੀ',
+    'sa': 'संस्कृतम्',
+    'sat': 'ᱥᱟᱱᱛᱟᱲᱤ',
+    'sd': 'सिन्धी',
+    'ta': 'தமிழ்',
+    'te': 'తెలుగు',
+    'ur': 'اردو'
 };
 
-// DOM Elements
 let themeToggle, sunIcon, moonIcon, voiceBtn, fabButton;
 let queryInput, imageUpload, videoUpload, imagePreview, languageSelect;
 let navItems, responseArea, loading;
 
-// Initialize on Load
 document.addEventListener('DOMContentLoaded', function() {
     initializeElements();
     initializeTheme();
     setupLanguageSelector();
     setupEventListeners();
     loadInitialData();
-    
-    // Add animation styles
     addAnimationStyles();
 });
 
-// Initialize DOM Elements
 function initializeElements() {
     themeToggle = document.getElementById('themeToggle');
     if (themeToggle) {
@@ -66,14 +58,11 @@ function initializeElements() {
     loading = document.getElementById('loading');
 }
 
-// ===== LANGUAGE SELECTOR WITH 22 LANGUAGES =====
 function setupLanguageSelector() {
     if (!languageSelect) return;
     
-    // Clear existing options
     languageSelect.innerHTML = '';
     
-    // Add all 22 languages
     Object.entries(INDIAN_LANGUAGES).forEach(([code, name]) => {
         const option = document.createElement('option');
         option.value = code;
@@ -82,37 +71,27 @@ function setupLanguageSelector() {
         languageSelect.appendChild(option);
     });
     
-    // Add change event
     languageSelect.addEventListener('change', async function(e) {
         const lang = e.target.value;
         const langName = INDIAN_LANGUAGES[lang] || 'English';
         showNotification(`Language changed to ${langName}`, 'info');
-        
-        // Update UI text if needed
         await loadFAQs(lang);
     });
 }
 
-// Load FAQs in selected language
 async function loadFAQs(lang = 'en') {
     try {
         const response = await fetch(`${API_BASE_URL}/faqs?lang=${lang}`);
         const faqs = await response.json();
         
-        if (faqs.error) {
-            console.error('Error loading FAQs:', faqs.error);
-            return;
+        if (!faqs.error) {
+            window.currentFAQs = faqs;
         }
-        
-        // Store FAQs for later use
-        window.currentFAQs = faqs;
-        
     } catch (error) {
-        console.error('Failed to load FAQs:', error);
+        return;
     }
 }
 
-// ===== THEME TOGGLE =====
 function initializeTheme() {
     if (!themeToggle || !sunIcon || !moonIcon) return;
     
@@ -131,7 +110,7 @@ function toggleTheme() {
     localStorage.setItem('theme', newTheme);
     updateThemeIcons(newTheme);
     
-    showNotification(`${newTheme === 'dark' ? '🌙 Dark' : '☀️ Light'} mode activated`, 'info');
+    showNotification(`${newTheme === 'dark' ? 'Dark' : 'Light'} mode activated`, 'info');
 }
 
 function updateThemeIcons(theme) {
@@ -146,7 +125,6 @@ function updateThemeIcons(theme) {
     }
 }
 
-// ===== VOICE INPUT =====
 function setupVoiceInput() {
     if (!voiceBtn) return;
     
@@ -198,7 +176,6 @@ function startVoiceRecognition() {
     });
 }
 
-// ===== IMAGE UPLOAD =====
 function setupImageUpload() {
     if (!imageUpload || !imagePreview) return;
     
@@ -207,7 +184,6 @@ function setupImageUpload() {
         
         if (e.target.files.length === 0) return;
         
-        // Show preview
         Array.from(e.target.files).forEach(file => {
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -220,7 +196,6 @@ function setupImageUpload() {
         
         showNotification(`${e.target.files.length} image(s) selected`, 'success');
         
-        // Auto-analyze first image for disease
         if (e.target.files.length >= 1) {
             await analyzeDiseaseImage(e.target.files[0]);
         }
@@ -251,7 +226,6 @@ async function analyzeDiseaseImage(file) {
         
     } catch (error) {
         showNotification('Failed to analyze image', 'error');
-        console.error(error);
     } finally {
         hideLoading();
     }
@@ -262,11 +236,6 @@ function displayDiseaseResult(data) {
     const confidence = (data.confidence * 100).toFixed(2);
     const currentLang = languageSelect ? languageSelect.value : 'en';
     
-    // Translate disease name if needed
-    let displayDisease = disease;
-    let displayTreatment = data.treatment;
-    
-    // Store original for translation
     window.lastDiseaseResult = data;
     
     const resultHTML = `
@@ -279,13 +248,13 @@ function displayDiseaseResult(data) {
                 </div>
             </div>
             <div class="response-content">
-                <p>🔍 <strong>Disease Identified:</strong></p>
+                <p><strong>Disease Identified:</strong></p>
                 <div class="info-box">
-                    <p><i class="fas fa-leaf"></i> <strong>Disease:</strong> <span class="disease-name">${displayDisease}</span></p>
+                    <p><i class="fas fa-leaf"></i> <strong>Disease:</strong> <span class="disease-name">${disease}</span></p>
                     <p><i class="fas fa-chart-line"></i> <strong>Confidence:</strong> ${confidence}%</p>
-                    <p><i class="fas fa-flask"></i> <strong>Treatment:</strong> <span class="treatment-text">${displayTreatment}</span></p>
+                    <p><i class="fas fa-flask"></i> <strong>Treatment:</strong> <span class="treatment-text">${data.treatment}</span></p>
                 </div>
-                ${currentLang !== 'en' ? `<p class="translation-note" style="color: var(--green-primary); margin-top: 10px;"><i class="fas fa-language"></i> Showing in ${INDIAN_LANGUAGES[currentLang]}</p>` : ''}
+                ${currentLang !== 'en' ? `<p class="translation-note"><i class="fas fa-language"></i> Showing in ${INDIAN_LANGUAGES[currentLang]}</p>` : ''}
             </div>
             <div class="response-footer">
                 <button class="listen-btn" onclick="textToSpeech(this)"><i class="fas fa-volume-up"></i> Listen</button>
@@ -302,7 +271,6 @@ function displayDiseaseResult(data) {
     }
 }
 
-// ===== VIDEO UPLOAD =====
 function setupVideoUpload() {
     if (!videoUpload) return;
     
@@ -314,7 +282,6 @@ function setupVideoUpload() {
     });
 }
 
-// ===== QUERY SUBMISSION =====
 function setupQueryInput() {
     if (!queryInput) return;
     
@@ -359,7 +326,6 @@ async function submitQuery() {
         
     } catch (error) {
         showNotification('Failed to get response', 'error');
-        console.error(error);
     } finally {
         hideLoading();
     }
@@ -371,10 +337,8 @@ function displayChatResponse(data) {
     const intent = data.intent;
     const originalQuery = data.original_query;
     
-    // Get language name
     const langName = INDIAN_LANGUAGES[detectedLang] || 'English';
     
-    // Create entity badges if any
     let entityHTML = '';
     if (data.entities && Object.keys(data.entities).length > 0) {
         entityHTML = '<div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;">';
@@ -400,7 +364,7 @@ function displayChatResponse(data) {
             <div class="response-content">
                 ${entityHTML || ''}
                 <p>${response.replace(/\n/g, '<br>')}</p>
-                ${detectedLang !== 'en' ? `<p class="translation-note" style="color: var(--green-primary); margin-top: 10px;"><i class="fas fa-language"></i> Translated from English to ${langName}</p>` : ''}
+                ${detectedLang !== 'en' ? `<p class="translation-note"><i class="fas fa-language"></i> Translated from English to ${langName}</p>` : ''}
             </div>
             <div class="response-footer">
                 <button class="listen-btn" onclick="textToSpeech(this)"><i class="fas fa-volume-up"></i> Listen</button>
@@ -417,7 +381,6 @@ function displayChatResponse(data) {
     }
 }
 
-// ===== QUICK ACTIONS =====
 function setupQuickActions() {
     window.setQuery = async function(type) {
         if (!queryInput) return;
@@ -434,7 +397,6 @@ function setupQuickActions() {
     };
 }
 
-// ===== TEXT TO SPEECH =====
 window.textToSpeech = function(button) {
     const responseCard = button.closest('.response-card');
     if (!responseCard) return;
@@ -442,7 +404,6 @@ window.textToSpeech = function(button) {
     const content = responseCard.querySelector('.response-content');
     if (!content) return;
     
-    // Get text content
     const text = content.innerText;
     
     if (!('speechSynthesis' in window)) {
@@ -450,15 +411,12 @@ window.textToSpeech = function(button) {
         return;
     }
     
-    // Get selected language
     const lang = languageSelect ? languageSelect.value : 'en';
     
-    // Stop any ongoing speech
     window.speechSynthesis.cancel();
     
     const utterance = new SpeechSynthesisUtterance(text);
     
-    // Set language (simplified - browsers support limited languages)
     if (lang === 'hi') utterance.lang = 'hi-IN';
     else if (lang === 'ta') utterance.lang = 'ta-IN';
     else if (lang === 'te') utterance.lang = 'te-IN';
@@ -485,13 +443,11 @@ window.textToSpeech = function(button) {
     
     utterance.onerror = () => {
         button.innerHTML = '<i class="fas fa-volume-up"></i> Listen';
-        showNotification('Error playing speech', 'error');
     };
     
     window.speechSynthesis.speak(utterance);
 };
 
-// ===== SHARE RESPONSE =====
 window.shareResponse = function(button) {
     const responseCard = button.closest('.response-card');
     if (!responseCard) return;
@@ -519,7 +475,6 @@ function copyToClipboard(text) {
     });
 }
 
-// ===== BOOKMARK RESPONSE =====
 window.bookmarkResponse = function(button) {
     const icon = button.querySelector('i');
     const responseCard = button.closest('.response-card');
@@ -531,14 +486,12 @@ window.bookmarkResponse = function(button) {
     
     if (icon.classList.contains('fas')) {
         saveToBookmarks(responseCard);
-        showNotification('✓ Saved to bookmarks', 'success');
+        showNotification('Saved to bookmarks', 'success');
     } else {
-        removeFromBookmarks(responseCard);
         showNotification('Removed from bookmarks', 'info');
     }
 };
 
-// ===== LOADING FUNCTIONS =====
 function showLoading() {
     if (loading) loading.style.display = 'block';
 }
@@ -547,9 +500,7 @@ function hideLoading() {
     if (loading) loading.style.display = 'none';
 }
 
-// ===== NOTIFICATION SYSTEM =====
 function showNotification(message, type = 'info') {
-    // Remove existing notification
     const existing = document.querySelector('.notification');
     if (existing) existing.remove();
     
@@ -583,7 +534,6 @@ function showNotification(message, type = 'info') {
         z-index: 1000;
         animation: slideIn 0.3s ease;
         border: 2px solid ${isDark ? '#00ff88' : '#2e7d32'};
-        box-shadow: ${isDark ? '0 0 20px rgba(0,255,136,0.3)' : '0 5px 15px rgba(46,125,50,0.2)'};
         font-weight: 500;
     `;
     
@@ -595,7 +545,6 @@ function showNotification(message, type = 'info') {
     }, 3000);
 }
 
-// ===== HISTORY FUNCTIONS =====
 function saveQueryToHistory(query) {
     if (!query.trim()) return;
     
@@ -631,12 +580,6 @@ function saveToBookmarks(card) {
     localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
 }
 
-function removeFromBookmarks(card) {
-    // Implementation for removing bookmarks
-    // This would need a unique identifier
-}
-
-// ===== NAVIGATION FUNCTIONS =====
 function setupNavigation() {
     if (!navItems || navItems.length === 0) return;
     
@@ -658,7 +601,6 @@ function setupNavigation() {
         });
     });
     
-    // FAB button
     if (fabButton) {
         fabButton.addEventListener('click', () => {
             if (voiceBtn) voiceBtn.click();
@@ -681,15 +623,15 @@ function showHistory() {
                     </div>
                 </div>
                 <div style="text-align: center; padding: 30px;">
-                    <i class="fas fa-search" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 15px;"></i>
-                    <p style="color: var(--text-muted);">No history yet. Start asking questions!</p>
+                    <i class="fas fa-search"></i>
+                    <p>No history yet. Start asking questions!</p>
                 </div>
             </div>
         `;
         return;
     }
     
-    let html = '<h3 style="margin-bottom: 20px;">Recent Queries</h3>';
+    let html = '<h3>Recent Queries</h3>';
     history.reverse().forEach(item => {
         const date = new Date(item.timestamp).toLocaleString();
         html += `
@@ -701,7 +643,7 @@ function showHistory() {
                         <p class="time">Click to reuse</p>
                     </div>
                 </div>
-                <p style="color: var(--text-secondary);">${item.query}</p>
+                <p>${item.query}</p>
             </div>
         `;
     });
@@ -723,15 +665,15 @@ function showSaved() {
                     </div>
                 </div>
                 <div style="text-align: center; padding: 30px;">
-                    <i class="far fa-bookmark" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 15px;"></i>
-                    <p style="color: var(--text-muted);">No saved items yet.</p>
+                    <i class="far fa-bookmark"></i>
+                    <p>No saved items yet.</p>
                 </div>
             </div>
         `;
         return;
     }
     
-    let html = '<h3 style="margin-bottom: 20px;">Saved Items</h3>';
+    let html = '<h3>Saved Items</h3>';
     bookmarks.reverse().forEach(bookmark => {
         html += `
             <div class="response-card">
@@ -773,19 +715,19 @@ function showProfile() {
                 <div style="width: 100px; height: 100px; border-radius: 50%; background: linear-gradient(135deg, var(--green-primary), var(--green-secondary)); margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
                     <i class="fas fa-seedling" style="font-size: 3rem; color: white;"></i>
                 </div>
-                <h3 style="margin-bottom: 10px;">Welcome, Farmer!</h3>
-                <p style="color: var(--text-muted); margin-bottom: 30px;">Your personal farming assistant</p>
+                <h3>Welcome, Farmer!</h3>
+                <p>Your personal farming assistant</p>
                 
                 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
-                    <div style="background: var(--bg-input); padding: 20px; border-radius: 20px; border: 2px solid var(--border-color);">
-                        <i class="fas fa-comment" style="font-size: 2rem; color: var(--green-primary); margin-bottom: 10px;"></i>
+                    <div style="background: var(--bg-input); padding: 20px; border-radius: 20px;">
+                        <i class="fas fa-comment" style="font-size: 2rem; color: var(--green-primary);"></i>
                         <p style="font-size: 2rem; font-weight: bold;">${history}</p>
-                        <p style="color: var(--text-muted);">Queries</p>
+                        <p>Queries</p>
                     </div>
-                    <div style="background: var(--bg-input); padding: 20px; border-radius: 20px; border: 2px solid var(--border-color);">
-                        <i class="fas fa-bookmark" style="font-size: 2rem; color: var(--green-primary); margin-bottom: 10px;"></i>
+                    <div style="background: var(--bg-input); padding: 20px; border-radius: 20px;">
+                        <i class="fas fa-bookmark" style="font-size: 2rem; color: var(--green-primary);"></i>
                         <p style="font-size: 2rem; font-weight: bold;">${bookmarks}</p>
-                        <p style="color: var(--text-muted);">Saved</p>
+                        <p>Saved</p>
                     </div>
                 </div>
             </div>
@@ -797,12 +739,9 @@ function showHome() {
     window.location.reload();
 }
 
-// ===== LOAD INITIAL DATA =====
 async function loadInitialData() {
-    // Load FAQs in default language
     await loadFAQs('en');
     
-    // Show welcome message
     setTimeout(() => {
         if (responseArea) {
             const welcomeHTML = `
@@ -815,7 +754,7 @@ async function loadInitialData() {
                         </div>
                     </div>
                     <div class="response-content">
-                        <p>🌾 <strong>Welcome to FarmBuddy!</strong></p>
+                        <p><strong>Welcome to FarmBuddy!</strong></p>
                         <p>I can help you with:</p>
                         <div class="info-box">
                             <p><i class="fas fa-seedling"></i> Crop advisory and farming tips</p>
@@ -824,7 +763,7 @@ async function loadInitialData() {
                             <p><i class="fas fa-search"></i> Disease detection from photos</p>
                             <p><i class="fas fa-language"></i> Support for 22 Indian languages</p>
                         </div>
-                        <p style="margin-top: 15px;">How can I help you today?</p>
+                        <p>How can I help you today?</p>
                     </div>
                 </div>
             `;
@@ -833,7 +772,6 @@ async function loadInitialData() {
     }, 500);
 }
 
-// ===== SETUP ALL EVENT LISTENERS =====
 function setupEventListeners() {
     setupVoiceInput();
     setupImageUpload();
@@ -843,7 +781,6 @@ function setupEventListeners() {
     setupNavigation();
 }
 
-// ===== ADD ANIMATION STYLES =====
 function addAnimationStyles() {
     const style = document.createElement('style');
     style.textContent = `
@@ -866,4 +803,19 @@ function addAnimationStyles() {
         }
     `;
     document.head.appendChild(style);
+}
+// Add this to setupEventListeners
+function setupEventListeners() {
+    setupVoiceInput();
+    setupImageUpload();
+    setupVideoUpload();
+    setupQueryInput();
+    setupQuickActions();
+    setupNavigation();
+    
+    // Send button click handler
+    const sendBtn = document.getElementById('sendBtn');
+    if (sendBtn) {
+        sendBtn.addEventListener('click', submitQuery);
+    }
 }

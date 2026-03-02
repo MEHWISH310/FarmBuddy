@@ -13,18 +13,62 @@ class DiseasePredictor:
         self.load_model()
         
     def load_model(self):
-        """Load trained model and class indices"""
-        print("Loading model...")
-        self.model = tf.keras.models.load_model(self.model_path)
+        try:
+            # Try loading with safe mode
+            self.model = tf.keras.models.load_model(
+                self.model_path,
+                safe_mode=False
+            )
+        except:
+            try:
+                # Try loading with compile=False
+                self.model = tf.keras.models.load_model(
+                    self.model_path,
+                    compile=False
+                )
+            except:
+                # Last resort: load weights into new model
+                self.model = self._rebuild_model()
         
         with open(self.class_indices_path, 'rb') as f:
             class_indices = pickle.load(f)
         
         self.class_names = {v: k for k, v in class_indices.items()}
-        print(f"✅ Model loaded. {len(self.class_names)} classes")
+    
+    def _rebuild_model(self):
+        """Rebuild model architecture and load weights"""
+        from tensorflow.keras import layers, models
         
+        # Get number of classes from indices file
+        with open(self.class_indices_path, 'rb') as f:
+            class_indices = pickle.load(f)
+        num_classes = len(class_indices)
+        
+        # Rebuild the same architecture as training
+        model = models.Sequential([
+            layers.Input(shape=(224, 224, 3)),
+            layers.Conv2D(32, (3, 3), activation='relu'),
+            layers.MaxPooling2D((2, 2)),
+            layers.Conv2D(64, (3, 3), activation='relu'),
+            layers.MaxPooling2D((2, 2)),
+            layers.Conv2D(128, (3, 3), activation='relu'),
+            layers.MaxPooling2D((2, 2)),
+            layers.Flatten(),
+            layers.Dense(256, activation='relu'),
+            layers.Dropout(0.5),
+            layers.Dense(num_classes, activation='softmax')
+        ])
+        
+        # Compile the model
+        model.compile(
+            optimizer='adam',
+            loss='categorical_crossentropy',
+            metrics=['accuracy']
+        )
+        
+        return model
+    
     def preprocess_image(self, img_path):
-        """Preprocess image for prediction"""
         img = image.load_img(img_path, target_size=(224, 224))
         img_array = image.img_to_array(img)
         img_array = np.expand_dims(img_array, axis=0)
@@ -32,12 +76,11 @@ class DiseasePredictor:
         return img_array
     
     def predict(self, img_path):
-        """Predict disease for image"""
         if self.model is None:
             self.load_model()
         
         img_array = self.preprocess_image(img_path)
-        predictions = self.model.predict(img_array)
+        predictions = self.model.predict(img_array, verbose=0)
         predicted_class = np.argmax(predictions[0])
         confidence = np.max(predictions[0])
         
@@ -51,8 +94,6 @@ class DiseasePredictor:
         }
     
     def get_treatment_advice(self, disease_name):
-        """Get treatment advice based on disease"""
-        
         if '___' in disease_name:
             parts = disease_name.split('___')
             crop = parts[0]

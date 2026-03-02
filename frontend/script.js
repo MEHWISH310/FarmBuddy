@@ -339,14 +339,23 @@ function displayChatResponse(data) {
     
     const langName = INDIAN_LANGUAGES[detectedLang] || 'English';
     
+    // FIXED ENTITY DISPLAY SECTION
     let entityHTML = '';
     if (data.entities && Object.keys(data.entities).length > 0) {
         entityHTML = '<div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;">';
-        Object.entries(data.entities).forEach(([key, values]) => {
-            if (values && values.length > 0) {
-                values.forEach(value => {
+        
+        // Fix: Check if values is an array before using forEach
+        Object.entries(data.entities).forEach(([key, value]) => {
+            if (value) {
+                // Handle both array and single value cases
+                if (Array.isArray(value)) {
+                    value.forEach(val => {
+                        entityHTML += `<span style="background: var(--green-dim); color: var(--green-primary); padding: 4px 12px; border-radius: 20px; font-size: 0.8rem;">${key}: ${val}</span>`;
+                    });
+                } else {
+                    // If it's a single value (not array), display it directly
                     entityHTML += `<span style="background: var(--green-dim); color: var(--green-primary); padding: 4px 12px; border-radius: 20px; font-size: 0.8rem;">${key}: ${value}</span>`;
-                });
+                }
             }
         });
         entityHTML += '</div>';

@@ -212,32 +212,137 @@ def chat():
         if not query:
             return jsonify({"error": "No query provided"}), 400
         
+        # Translate to English if needed
         english_query, original_lang = translator.translate_to_english(query)
         
+        # Detect intent
         intent = 'general'
-        if any(word in english_query.lower() for word in ['price', 'rate', 'cost', 'market', 'mandi']):
+        if any(word in english_query.lower() for word in ['price', 'rate', 'cost', 'market', 'mandi', 'भाव']):
             intent = 'market_price'
-        elif any(word in english_query.lower() for word in ['scheme', 'yojana', 'subsidy', 'sarkari']):
+        elif any(word in english_query.lower() for word in ['scheme', 'yojana', 'subsidy', 'sarkari', 'योजना']):
             intent = 'scheme'
-        elif any(word in english_query.lower() for word in ['disease', 'spot', 'yellow', 'brown', 'leaf', 'fungus']):
+        elif any(word in english_query.lower() for word in ['disease', 'spot', 'yellow', 'brown', 'leaf', 'fungus', 'रोग']):
             intent = 'disease'
+        elif any(word in english_query.lower() for word in ['advisory', 'grow', 'plant', 'fertilizer', 'खाद']):
+            intent = 'advisory'
         
+        # Extract entities (crop names)
         entities = {}
-        crops = ['wheat', 'rice', 'onion', 'potato', 'tomato', 'bajra', 'maize', 'cotton', 'sugarcane']
+        crops = ['wheat', 'rice', 'onion', 'potato', 'tomato', 'bajra', 'maize', 
+                 'cotton', 'sugarcane', 'groundnut', 'soybean', 'mustard', 'बाजरा', 
+                 'गेहूं', 'चावल', 'प्याज', 'आलू', 'टमाटर']
+        
         for crop in crops:
-            if crop in english_query.lower():
+            if crop.lower() in english_query.lower() or crop.lower() in query.lower():
                 entities['crop'] = crop
                 break
         
-        if intent == 'market_price' and entities.get('crop'):
-            response = f"Checking current market price for {entities['crop']}..."
-        elif intent == 'scheme':
-            response = "You can check all government schemes at the Schemes section. What specific scheme are you interested in?"
-        elif intent == 'disease':
-            response = "For disease detection, please upload a photo of your crop using the camera button above."
-        else:
-            response = "I'm FarmBuddy, your AI farming assistant. I can help you with:\n• Crop prices and market trends\n• Government schemes and subsidies\n• Disease detection from photos\n• Crop advisory and best practices\n\nHow can I assist you today?"
+        # Extract state if mentioned
+        states = ['punjab', 'haryana', 'uttar pradesh', 'maharashtra', 'karnataka', 
+                  'tamil nadu', 'andhra pradesh', 'madhya pradesh', 'rajasthan', 'gujarat',
+                  'पंजाब', 'हरियाणा', 'उत्तर प्रदेश', 'महाराष्ट्र']
         
+        for state in states:
+            if state.lower() in english_query.lower() or state.lower() in query.lower():
+                entities['state'] = state
+                break
+        
+        # Generate response based on intent
+        response = ""
+        
+        if intent == 'market_price':
+            if entities.get('crop'):
+                # Get real price data
+                state = entities.get('state', 'maharashtra')  # Default to Maharashtra
+                price_result = price_analyzer.get_crop_price(entities['crop'], state)
+                
+                if 'error' not in price_result:
+                    response = f"📊 **{entities['crop'].title()} Market Price**\n\n"
+                    response += f"💰 **Modal Price:** ₹{price_result['modal_price']}/quintal\n"
+                    response += f"📉 **Min Price:** ₹{price_result['min_price']}/quintal\n"
+                    response += f"📈 **Max Price:** ₹{price_result['max_price']}/quintal\n"
+                    response += f"📍 **Market:** {price_result['market']}\n"
+                    response += f"📅 **Date:** {price_result['date']}\n"
+                    
+                    if price_result.get('arrival_quantity'):
+                        response += f"📦 **Arrival:** {price_result['arrival_quantity']} quintals\n"
+                else:
+                    response = f"😕 Sorry, I couldn't find price data for {entities['crop']} in {state}. Try another crop or state."
+            else:
+                response = "Please specify a crop name. For example: 'What is the price of onion in Maharashtra?'"
+        
+        elif intent == 'scheme':
+            try:
+                # Load schemes from JSON
+                schemes_path = os.path.join(RAW_DATA_DIR, 'schemes.json')
+                if os.path.exists(schemes_path):
+                    with open(schemes_path, 'r', encoding='utf-8') as f:
+                        schemes = json.load(f)
+                    
+                    if schemes and len(schemes) > 0:
+                        response = "📋 **Government Schemes for Farmers:**\n\n"
+                        for i, scheme in enumerate(schemes[:3], 1):  # Show top 3
+                            response += f"{i}. **{scheme.get('name', 'Scheme')}**\n"
+                            response += f"   {scheme.get('description', '')[:100]}...\n\n"
+                        response += "Type 'more schemes' to see all or visit /api/schemes"
+                    else:
+                        response = "No schemes found in database."
+                else:
+                    response = "Scheme information coming soon!"
+            except:
+                response = "Scheme information coming soon!"
+        
+        elif intent == 'advisory':
+            if entities.get('crop'):
+                try:
+                    # Load crop advisory from JSON
+                    advisory_path = os.path.join(RAW_DATA_DIR, 'crop_advisory.json')
+                    if os.path.exists(advisory_path):
+                        with open(advisory_path, 'r', encoding='utf-8') as f:
+                            advisories = json.load(f)
+                        
+                        crop_advice = None
+                        for adv in advisories:
+                            if adv.get('crop', '').lower() == entities['crop'].lower():
+                                crop_advice = adv
+                                break
+                        
+                        if crop_advice:
+                            response = f"🌱 **{entities['crop'].title()} Growing Guide:**\n\n"
+                            if 'season' in crop_advice:
+                                response += f"📅 **Season:** {crop_advice['season']}\n"
+                            if 'soil' in crop_advice:
+                                response += f"🪴 **Soil:** {crop_advice['soil']}\n"
+                            if 'varieties' in crop_advice:
+                                response += f"🌾 **Varieties:** {crop_advice['varieties']}\n"
+                            if 'fertilizer' in crop_advice:
+                                response += f"🧪 **Fertilizer:** {crop_advice['fertilizer']}\n"
+                        else:
+                            response = f"Advisory for {entities['crop']} coming soon!"
+                except:
+                    response = f"Advisory for {entities['crop']} coming soon!"
+            else:
+                response = "Please specify a crop name for advisory. For example: 'How to grow tomatoes?'"
+        
+        elif intent == 'disease':
+            response = "🔍 **Disease Detection**\n\nPlease upload a photo of your plant using the camera button above, and I'll identify any diseases and suggest treatments."
+        
+        else:
+            # General greeting or unknown query
+            if any(word in english_query.lower() for word in ['hi', 'hello', 'namaste']):
+                response = "👋 **Namaste!** I'm FarmBuddy, your AI farming assistant. How can I help you today?\n\n"
+                response += "You can ask me about:\n"
+                response += "• 🌾 Crop prices (e.g., 'onion price in Maharashtra')\n"
+                response += "• 📋 Government schemes\n"
+                response += "• 🌱 Farming advice\n"
+                response += "• 🔍 Disease detection (upload a photo)"
+            else:
+                response = "I'm not sure I understood. Try asking about:\n"
+                response += "• Market prices: 'What is the price of onion?'\n"
+                response += "• Government schemes: 'Show me farmer schemes'\n"
+                response += "• Crop advice: 'How to grow tomatoes?'"
+        
+        # Translate response if original language wasn't English
         if original_lang != 'en':
             response = translator.translate_text(response, original_lang)
         
@@ -249,7 +354,9 @@ def chat():
             'entities': entities,
             'response': response
         })
+        
     except Exception as e:
+        print(f"Chat error: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/predict-disease', methods=['POST'])

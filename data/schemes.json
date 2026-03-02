@@ -1,0 +1,97 @@
+[
+  {
+    "name": "PM-KISAN",
+    "full_name": "Pradhan Mantri Kisan Samman Nidhi",
+    "description": "Income support scheme for farmers",
+    "benefit": "₹6,000 per year in 3 installments",
+    "eligibility": "All landholding farmers",
+    "how_to_apply": "Visit pmkisan.gov.in or nearest CSC center",
+    "documents_required": ["Aadhaar", "Land records", "Bank account", "Mobile number"],
+    "category": "income_support",
+    "website": "https://pmkisan.gov.in",
+    "helpline": "011-23381092"
+  },
+  {
+    "name": "PMFBY",
+    "full_name": "Pradhan Mantri Fasal Bima Yojana",
+    "description": "Crop insurance scheme against natural calamities",
+    "benefit": "Insurance coverage at 2% (Kharif), 1.5% (Rabi), 5% (commercial)",
+    "eligibility": "All farmers growing notified crops",
+    "how_to_apply": "Through bank/CSC/insurance company",
+    "documents_required": ["Land records", "Bank account", "Crop details"],
+    "category": "insurance",
+    "website": "https://pmfby.gov.in"
+  },
+  {
+    "name": "KCC",
+    "full_name": "Kisan Credit Card",
+    "description": "Short-term crop loan scheme",
+    "benefit": "Loan up to ₹5 lakh at 7% interest (effective 4% on timely repayment)",
+    "eligibility": "All farmers, fishermen, dairy farmers",
+    "how_to_apply": "Any nationalized bank branch",
+    "documents_required": ["Aadhaar", "Land records", "Passport size photo"],
+    "category": "credit",
+    "website": "https://kcc.gov.in"
+  },
+  {
+    "name": "PM-KMY",
+    "full_name": "Pradhan Mantri Kisan Maan-Dhan Yojana",
+    "description": "Pension scheme for farmers",
+    "benefit": "₹3,000/month after 60 years",
+    "eligibility": "Farmers aged 18-40 years",
+    "how_to_apply": "CSC center or PM-KISAN portal",
+    "contribution": "₹55 to ₹200 per month",
+    "category": "pension"
+  },
+  {
+    "name": "PMKSY",
+    "full_name": "Pradhan Mantri Krishi Sinchai Yojana",
+    "description": "Irrigation scheme - Har Khet Ko Paani",
+    "benefit": "Subsidy on micro-irrigation (drip/sprinkler)",
+    "eligibility": "All farmers",
+    "how_to_apply": "State agriculture department",
+    "category": "irrigation"
+  },
+  {
+    "name": "SMAM",
+    "full_name": "Sub-Mission on Agricultural Mechanization",
+    "description": "Subsidy on farm machinery",
+    "benefit": "Subsidy on tractors, harvesters, tillers",
+    "eligibility": "All farmers",
+    "how_to_apply": "District agriculture office",
+    "category": "mechanization"
+  },
+  {
+    "name": "MIDH",
+    "full_name": "Mission for Integrated Development of Horticulture",
+    "description": "Horticulture development scheme",
+    "benefit": "Assistance for fruits, vegetables, spices cultivation",
+    "eligibility": "Horticulture farmers",
+    "how_to_apply": "State horticulture department",
+    "category": "horticulture"
+  },
+  {
+    "name": "PM-AASHA",
+    "full_name": "Pradhan Mantri Annadata Aay SanraksHan Abhiyan",
+    "description": "Price support scheme for MSP",
+    "benefit": "Remunerative prices for crops",
+    "eligibility": "Farmers growing notified crops",
+    "category": "price_support"
+  },
+  {
+    "name": "AIF",
+    "full_name": "Agriculture Infrastructure Fund",
+    "description": "Debt financing for post-harvest management",
+    "benefit": "Loan for cold storage, warehouse, processing",
+    "eligibility": "Farmers, FPOs, entrepreneurs",
+    "category": "infrastructure"
+  },
+  {
+    "name": "PKVY",
+    "full_name": "Paramparagat Krishi Vikas Yojana",
+    "description": "Organic farming promotion",
+    "benefit": "Support for organic farming clusters",
+    "eligibility": "Farmers willing to do organic farming",
+    "category": "organic_farming"
+  }
+]

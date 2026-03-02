@@ -25,3 +25,40 @@ Thumbs.db
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Virtual Environment
+venv/
+env/
+ENV/
+__pycache__/
+*.pyc
+
+# Large Data Files
+data/plant_disease/
+data/plant_disease_raw/
+data/plant_disease_processed/
+data/market_data/
+data/processed_data/
+data/raw_data/
+data/market_data_by_state/
+uploads/
+models/disease_model.h5
+models/*.pkl
+
+# Large CSV/JSON
+*.csv
+*.zip
+*.tar
+*.gz
+*.rar
+*.h5
+*.pkl
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log

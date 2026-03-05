@@ -1,230 +1,280 @@
+/**
+ * FarmBuddy AI - Merged Script
+ * Frontend: New ChatGPT-style layout
+ * Functionality: Original script.js logic (API calls, voice, disease detection, TTS, bookmarks, history)
+ */
+
 const API_BASE_URL = 'http://127.0.0.1:5000/api';
 
 const INDIAN_LANGUAGES = {
-    'as': 'অসমীয়া',
-    'bn': 'বাংলা',
-    'brx': 'बर',
-    'doi': 'डोगरी',
-    'en': 'English',
-    'gu': 'ગુજરાતી',
-    'hi': 'हिन्दी',
-    'kn': 'ಕನ್ನಡ',
-    'ks': 'कॉशुर',
-    'kok': 'कोंकणी',
-    'mai': 'मैथिली',
-    'ml': 'മലയാളം',
-    'mni': 'মৈতৈলোন্',
-    'mr': 'मराठी',
-    'ne': 'नेपाली',
-    'or': 'ଓଡ଼ିଆ',
-    'pa': 'ਪੰਜਾਬੀ',
-    'sa': 'संस्कृतम्',
-    'sat': 'ᱥᱟᱱᱛᱟᱲᱤ',
-    'sd': 'सिन्धी',
-    'ta': 'தமிழ்',
-    'te': 'తెలుగు',
-    'ur': 'اردو'
+    'as': 'অসমীয়া', 'bn': 'বাংলা', 'brx': 'बर', 'doi': 'डोगरी',
+    'en': 'English', 'gu': 'ગુજરાતી', 'hi': 'हिन्दी', 'kn': 'ಕನ್ನಡ',
+    'ks': 'कॉशुर', 'kok': 'कोंकणी', 'mai': 'मैथिली', 'ml': 'മലയാളം',
+    'mni': 'মৈতৈলোন্', 'mr': 'मराठी', 'ne': 'नेपाली', 'or': 'ଓଡ଼ିଆ',
+    'pa': 'ਪੰਜਾਬੀ', 'sa': 'संस्कृतम्', 'sat': 'ᱥᱟᱱᱛᱟᱲᱤ', 'sd': 'सिन्धी',
+    'ta': 'தமிழ்', 'te': 'తెలుగు', 'ur': 'اردو'
 };
 
-let themeToggle, sunIcon, moonIcon, voiceBtn, fabButton;
+// ─── DOM References ──────────────────────────────────────────────────────────
+let themeToggle, voiceBtn, fabButton;
 let queryInput, imageUpload, videoUpload, imagePreview, languageSelect;
-let navItems, responseArea, loading;
+let messagesContainer, loading, sendBtn, sidebar, menuBtn, closeSidebar;
+let newChatBtn, mobileNewChat, searchInput, historyList;
 
-document.addEventListener('DOMContentLoaded', function() {
+// ─── Conversation State ───────────────────────────────────────────────────────
+let conversations = loadConversations();
+let currentConversationId = getOrCreateConversation();
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function () {
     initializeElements();
     initializeTheme();
     setupLanguageSelector();
     setupEventListeners();
     loadInitialData();
     addAnimationStyles();
+    setupSidebar();
+    loadCurrentConversation();
+    renderHistory();
 });
 
 function initializeElements() {
-    themeToggle = document.getElementById('themeToggle');
-    if (themeToggle) {
-        sunIcon = themeToggle.querySelector('.fa-sun');
-        moonIcon = themeToggle.querySelector('.fa-moon');
-    }
-    
-    voiceBtn = document.getElementById('voiceBtn');
-    fabButton = document.getElementById('fabButton');
-    queryInput = document.getElementById('queryInput');
-    imageUpload = document.getElementById('imageUpload');
-    videoUpload = document.getElementById('videoUpload');
-    imagePreview = document.getElementById('imagePreview');
-    languageSelect = document.querySelector('.language-select');
-    navItems = document.querySelectorAll('.nav-item');
-    responseArea = document.getElementById('responseArea');
-    loading = document.getElementById('loading');
+    themeToggle       = document.getElementById('themeToggle');
+    voiceBtn          = document.getElementById('voiceBtn');
+    sendBtn           = document.getElementById('sendBtn');
+    queryInput        = document.getElementById('queryInput');
+    imageUpload       = document.getElementById('imageUpload');
+    videoUpload       = document.getElementById('videoUpload');
+    imagePreview      = document.getElementById('imagePreview');
+    languageSelect    = document.getElementById('languageSelect');
+    messagesContainer = document.getElementById('messages');
+    loading           = document.getElementById('loading');
+    sidebar           = document.getElementById('sidebar');
+    menuBtn           = document.getElementById('menuBtn');
+    closeSidebar      = document.getElementById('closeSidebar');
+    newChatBtn        = document.getElementById('newChatBtn');
+    mobileNewChat     = document.getElementById('mobileNewChat');
+    searchInput       = document.getElementById('searchInput');
+    historyList       = document.getElementById('historyList');
 }
 
+// ─── Theme ────────────────────────────────────────────────────────────────────
+function initializeTheme() {
+    const saved = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-theme', saved);
+    updateThemeIcon(saved);
+    if (themeToggle) themeToggle.addEventListener('click', toggleTheme);
+}
+
+function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme');
+    const next = current === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    updateThemeIcon(next);
+    showNotification(`${next === 'dark' ? 'Dark' : 'Light'} mode activated`, 'info');
+}
+
+function updateThemeIcon(theme) {
+    if (!themeToggle) return;
+    const icon = themeToggle.querySelector('i');
+    if (icon) icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+}
+
+// ─── Language Selector ────────────────────────────────────────────────────────
 function setupLanguageSelector() {
     if (!languageSelect) return;
-    
     languageSelect.innerHTML = '';
-    
     Object.entries(INDIAN_LANGUAGES).forEach(([code, name]) => {
-        const option = document.createElement('option');
-        option.value = code;
-        option.textContent = name;
-        if (code === 'en') option.selected = true;
-        languageSelect.appendChild(option);
+        const opt = document.createElement('option');
+        opt.value = code;
+        opt.textContent = name;
+        if (code === 'en') opt.selected = true;
+        languageSelect.appendChild(opt);
     });
-    
-    languageSelect.addEventListener('change', async function(e) {
+    languageSelect.addEventListener('change', async function (e) {
         const lang = e.target.value;
-        const langName = INDIAN_LANGUAGES[lang] || 'English';
-        showNotification(`Language changed to ${langName}`, 'info');
+        showNotification(`Language changed to ${INDIAN_LANGUAGES[lang] || 'English'}`, 'info');
         await loadFAQs(lang);
     });
 }
 
 async function loadFAQs(lang = 'en') {
     try {
-        const response = await fetch(`${API_BASE_URL}/faqs?lang=${lang}`);
-        const faqs = await response.json();
-        
-        if (!faqs.error) {
-            window.currentFAQs = faqs;
+        const res = await fetch(`${API_BASE_URL}/faqs?lang=${lang}`);
+        const faqs = await res.json();
+        if (!faqs.error) window.currentFAQs = faqs;
+    } catch (_) { /* silent */ }
+}
+
+// ─── Sidebar ──────────────────────────────────────────────────────────────────
+function setupSidebar() {
+    if (menuBtn)      menuBtn.addEventListener('click', toggleSidebar);
+    if (closeSidebar) closeSidebar.addEventListener('click', toggleSidebar);
+    if (newChatBtn)   newChatBtn.addEventListener('click', newChat);
+    if (mobileNewChat) mobileNewChat.addEventListener('click', newChat);
+    if (searchInput)  searchInput.addEventListener('input', filterHistory);
+
+    document.addEventListener('click', function (e) {
+        if (window.innerWidth <= 768 &&
+            sidebar && sidebar.classList.contains('open') &&
+            !sidebar.contains(e.target) &&
+            menuBtn && !menuBtn.contains(e.target)) {
+            toggleSidebar();
         }
-    } catch (error) {
-        return;
+    });
+}
+
+function toggleSidebar() {
+    if (sidebar) sidebar.classList.toggle('open');
+}
+
+// ─── Event Listeners ──────────────────────────────────────────────────────────
+function setupEventListeners() {
+    // Send button
+    if (sendBtn) sendBtn.addEventListener('click', submitQuery);
+
+    // Enter key in textarea
+    if (queryInput) {
+        queryInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                submitQuery();
+            }
+        });
+        // Auto-resize
+        queryInput.addEventListener('input', autoResizeTextarea);
     }
+
+    // Attach image button → triggers hidden input
+    const attachBtn = document.getElementById('attachBtn');
+    if (attachBtn) attachBtn.addEventListener('click', () => imageUpload && imageUpload.click());
+
+    // Attach video button
+    const videoAttachBtn = document.getElementById('videoAttachBtn');
+    if (videoAttachBtn) videoAttachBtn.addEventListener('click', () => videoUpload && videoUpload.click());
+
+    setupVoiceInput();
+    setupImageUpload();
+    setupVideoUpload();
 }
 
-function initializeTheme() {
-    if (!themeToggle || !sunIcon || !moonIcon) return;
-    
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    updateThemeIcons(savedTheme);
-    
-    themeToggle.addEventListener('click', toggleTheme);
+function autoResizeTextarea() {
+    if (!queryInput) return;
+    queryInput.style.height = 'auto';
+    queryInput.style.height = Math.min(queryInput.scrollHeight, 200) + 'px';
 }
 
-function toggleTheme() {
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-    
-    document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('theme', newTheme);
-    updateThemeIcons(newTheme);
-    
-    showNotification(`${newTheme === 'dark' ? 'Dark' : 'Light'} mode activated`, 'info');
-}
-
-function updateThemeIcons(theme) {
-    if (!sunIcon || !moonIcon) return;
-    
-    if (theme === 'dark') {
-        sunIcon.style.display = 'none';
-        moonIcon.style.display = 'inline-block';
-    } else {
-        sunIcon.style.display = 'inline-block';
-        moonIcon.style.display = 'none';
-    }
-}
-
+// ─── Voice Input ──────────────────────────────────────────────────────────────
 function setupVoiceInput() {
     if (!voiceBtn) return;
-    
-    voiceBtn.addEventListener('click', async function() {
-        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-            showNotification('Voice recognition not supported in this browser', 'error');
-            return;
+
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        voiceBtn.style.display = 'none';
+        return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+    let isRecording = false;
+
+    recognition.onresult = (event) => {
+        const transcript = Array.from(event.results).map(r => r[0].transcript).join('');
+        if (queryInput) {
+            queryInput.value = transcript;
+            autoResizeTextarea();
         }
-        
-        const originalHTML = this.innerHTML;
-        this.innerHTML = '<i class="fas fa-stop"></i><span>Listening...</span>';
-        this.style.animation = 'pulse 1s infinite';
-        
-        try {
-            const transcript = await startVoiceRecognition();
-            if (queryInput) {
-                queryInput.value = transcript;
-                showNotification('Voice captured!', 'success');
-                await submitQuery();
-            }
-        } catch (error) {
-            showNotification('Could not recognize voice. Please try again.', 'error');
-        } finally {
-            this.innerHTML = originalHTML;
-            this.style.animation = '';
+    };
+
+    recognition.onend = () => {
+        isRecording = false;
+        voiceBtn.style.color = '';
+        voiceBtn.querySelector('i').className = 'fas fa-microphone';
+        if (queryInput && queryInput.value.trim()) {
+            showNotification('Voice captured!', 'success');
+            submitQuery();
+        }
+    };
+
+    recognition.onerror = () => {
+        isRecording = false;
+        voiceBtn.style.color = '';
+        voiceBtn.querySelector('i').className = 'fas fa-microphone';
+        showNotification('Could not recognize voice. Please try again.', 'error');
+    };
+
+    voiceBtn.addEventListener('click', function () {
+        if (isRecording) {
+            recognition.stop();
+        } else {
+            recognition.start();
+            isRecording = true;
+            voiceBtn.style.color = 'var(--green-primary)';
+            voiceBtn.querySelector('i').className = 'fas fa-stop';
         }
     });
 }
 
-function startVoiceRecognition() {
-    return new Promise((resolve, reject) => {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const recognition = new SpeechRecognition();
-        
-        recognition.lang = 'en-US';
-        recognition.interimResults = false;
-        recognition.maxAlternatives = 1;
-        
-        recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            resolve(transcript);
-        };
-        
-        recognition.onerror = (event) => {
-            reject(event.error);
-        };
-        
-        recognition.start();
-    });
-}
-
+// ─── Image Upload ─────────────────────────────────────────────────────────────
 function setupImageUpload() {
     if (!imageUpload || !imagePreview) return;
-    
-    imageUpload.addEventListener('change', async function(e) {
+
+    imageUpload.addEventListener('change', async function (e) {
         imagePreview.innerHTML = '';
-        
         if (e.target.files.length === 0) return;
-        
-        Array.from(e.target.files).forEach(file => {
+
+        Array.from(e.target.files).forEach((file, index) => {
             const reader = new FileReader();
-            reader.onload = function(e) {
-                const img = document.createElement('img');
-                img.src = e.target.result;
-                imagePreview.appendChild(img);
+            reader.onload = function (ev) {
+                const item = document.createElement('div');
+                item.className = 'preview-item';
+                item.innerHTML = `
+                    <img src="${ev.target.result}" alt="Preview">
+                    <button class="remove-preview" onclick="removePreview(${index})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                imagePreview.appendChild(item);
             };
             reader.readAsDataURL(file);
         });
-        
+
         showNotification(`${e.target.files.length} image(s) selected`, 'success');
-        
+
         if (e.target.files.length >= 1) {
             await analyzeDiseaseImage(e.target.files[0]);
         }
     });
 }
 
+window.removePreview = function (index) {
+    if (imagePreview) imagePreview.innerHTML = '';
+    if (imageUpload) imageUpload.value = '';
+};
+
 async function analyzeDiseaseImage(file) {
     showLoading();
-    
     const formData = new FormData();
     formData.append('image', file);
-    
+
     try {
-        const response = await fetch(`${API_BASE_URL}/predict-disease`, {
+        const res = await fetch(`${API_BASE_URL}/predict-disease`, {
             method: 'POST',
             body: formData
         });
-        
-        const data = await response.json();
-        
+        const data = await res.json();
+
         if (data.error) {
             showNotification(`Error: ${data.error}`, 'error');
             hideLoading();
             return;
         }
-        
+
         displayDiseaseResult(data);
-        
-    } catch (error) {
+    } catch (_) {
         showNotification('Failed to analyze image', 'error');
     } finally {
         hideLoading();
@@ -235,46 +285,31 @@ function displayDiseaseResult(data) {
     const disease = data.disease.replace(/_/g, ' ');
     const confidence = (data.confidence * 100).toFixed(2);
     const currentLang = languageSelect ? languageSelect.value : 'en';
-    
-    window.lastDiseaseResult = data;
-    
-    const resultHTML = `
-        <div class="response-card disease-result" data-disease="${data.disease}" data-treatment="${data.treatment}">
-            <div class="response-header">
-                <div class="avatar"><i class="fas fa-robot"></i></div>
-                <div>
-                    <h4>FarmBuddy AI - Disease Detection</h4>
-                    <p class="time">Just now</p>
-                </div>
-            </div>
-            <div class="response-content">
-                <p><strong>Disease Identified:</strong></p>
-                <div class="info-box">
-                    <p><i class="fas fa-leaf"></i> <strong>Disease:</strong> <span class="disease-name">${disease}</span></p>
-                    <p><i class="fas fa-chart-line"></i> <strong>Confidence:</strong> ${confidence}%</p>
-                    <p><i class="fas fa-flask"></i> <strong>Treatment:</strong> <span class="treatment-text">${data.treatment}</span></p>
-                </div>
-                ${currentLang !== 'en' ? `<p class="translation-note"><i class="fas fa-language"></i> Showing in ${INDIAN_LANGUAGES[currentLang]}</p>` : ''}
-            </div>
-            <div class="response-footer">
-                <button class="listen-btn" onclick="textToSpeech(this)"><i class="fas fa-volume-up"></i> Listen</button>
-                <div class="response-actions">
-                    <button onclick="shareResponse(this)"><i class="fas fa-share-alt"></i></button>
-                    <button onclick="bookmarkResponse(this)"><i class="far fa-bookmark"></i></button>
-                </div>
-            </div>
+
+    const text = `
+        <strong>Disease Identified:</strong>
+        <div class="info-box">
+            <p><i class="fas fa-leaf"></i> <strong>Disease:</strong> ${disease}</p>
+            <p><i class="fas fa-chart-line"></i> <strong>Confidence:</strong> ${confidence}%</p>
+            <p><i class="fas fa-flask"></i> <strong>Treatment:</strong> ${data.treatment}</p>
         </div>
+        ${currentLang !== 'en' ? `<span class="translation-note"><i class="fas fa-language"></i> Showing in ${INDIAN_LANGUAGES[currentLang]}</span>` : ''}
     `;
-    
-    if (responseArea) {
-        responseArea.innerHTML = resultHTML + (responseArea.innerHTML || '');
-    }
+
+    addMessageToUI(text, 'ai', 'FarmBuddy AI — Disease Detection');
+    saveMessage(text, 'ai');
+
+    // Clear previews after 3s
+    setTimeout(() => {
+        if (imagePreview) imagePreview.innerHTML = '';
+        if (imageUpload) imageUpload.value = '';
+    }, 3000);
 }
 
+// ─── Video Upload ─────────────────────────────────────────────────────────────
 function setupVideoUpload() {
     if (!videoUpload) return;
-    
-    videoUpload.addEventListener('change', function(e) {
+    videoUpload.addEventListener('change', function (e) {
         if (e.target.files.length > 0) {
             showNotification(`Video selected: ${e.target.files[0].name}`, 'success');
             showNotification('Video processing coming soon!', 'info');
@@ -282,195 +317,204 @@ function setupVideoUpload() {
     });
 }
 
-function setupQueryInput() {
-    if (!queryInput) return;
-    
-    queryInput.addEventListener('keypress', async function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            await submitQuery();
-        }
-    });
-}
-
+// ─── Submit Query (Chat) ──────────────────────────────────────────────────────
 async function submitQuery() {
     if (!queryInput) return;
-    
     const query = queryInput.value.trim();
     if (!query) {
         showNotification('Please enter a question', 'warning');
         return;
     }
-    
+
+    // Show user message immediately
+    addMessageToUI(query, 'user', 'You');
+    saveMessage(query, 'user');
     saveQueryToHistory(query);
+
+    queryInput.value = '';
+    autoResizeTextarea();
+
+    // Typing indicator
+    showTypingIndicator();
     showLoading();
-    
+
     try {
-        const response = await fetch(`${API_BASE_URL}/chat`, {
+        const res = await fetch(`${API_BASE_URL}/chat`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ query: query })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query })
         });
-        
-        const data = await response.json();
-        
+        const data = await res.json();
+
+        hideTypingIndicator();
+        hideLoading();
+
         if (data.error) {
             showNotification(`Error: ${data.error}`, 'error');
-            hideLoading();
             return;
         }
-        
+
         displayChatResponse(data);
-        
-    } catch (error) {
-        showNotification('Failed to get response', 'error');
-    } finally {
+
+    } catch (_) {
+        hideTypingIndicator();
         hideLoading();
+        showNotification('Failed to get response', 'error');
     }
 }
 
 function displayChatResponse(data) {
-    const response = data.response;
-    const detectedLang = data.detected_language;
-    const intent = data.intent;
-    const originalQuery = data.original_query;
-    
-    const langName = INDIAN_LANGUAGES[detectedLang] || 'English';
-    
-    // FIXED ENTITY DISPLAY SECTION
+    const response     = data.response;
+    const detectedLang = data.detected_language || 'en';
+    const intent       = data.intent || 'general';
+    const langName     = INDIAN_LANGUAGES[detectedLang] || 'English';
+
+    // Entity tags
     let entityHTML = '';
     if (data.entities && Object.keys(data.entities).length > 0) {
-        entityHTML = '<div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;">';
-        
-        // Fix: Check if values is an array before using forEach
+        entityHTML = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">';
         Object.entries(data.entities).forEach(([key, value]) => {
             if (value) {
-                // Handle both array and single value cases
-                if (Array.isArray(value)) {
-                    value.forEach(val => {
-                        entityHTML += `<span style="background: var(--green-dim); color: var(--green-primary); padding: 4px 12px; border-radius: 20px; font-size: 0.8rem;">${key}: ${val}</span>`;
-                    });
-                } else {
-                    // If it's a single value (not array), display it directly
-                    entityHTML += `<span style="background: var(--green-dim); color: var(--green-primary); padding: 4px 12px; border-radius: 20px; font-size: 0.8rem;">${key}: ${value}</span>`;
-                }
+                const vals = Array.isArray(value) ? value : [value];
+                vals.forEach(val => {
+                    entityHTML += `<span style="background:var(--green-dim);color:var(--green-primary);padding:4px 12px;border-radius:20px;font-size:0.8rem;">${key}: ${val}</span>`;
+                });
             }
         });
         entityHTML += '</div>';
     }
-    
-    const responseHTML = `
-        <div class="response-card chat-response" data-original-query="${originalQuery}">
-            <div class="response-header">
-                <div class="avatar"><i class="fas fa-robot"></i></div>
-                <div>
-                    <h4>FarmBuddy AI</h4>
-                    <p class="time">Detected: ${langName} | Intent: ${intent}</p>
-                </div>
+
+    const html = `
+        ${entityHTML}
+        ${response.replace(/\n/g, '<br>')}
+        ${detectedLang !== 'en' ? `<span class="translation-note"><i class="fas fa-language"></i> Translated from English to ${langName}</span>` : ''}
+    `;
+
+    addMessageToUI(html, 'ai', `FarmBuddy AI — ${intent}`);
+    saveMessage(html, 'ai');
+}
+
+// ─── Render a message bubble in the new chat UI ───────────────────────────────
+function addMessageToUI(text, sender, senderLabel) {
+    if (!messagesContainer) return;
+
+    const div = document.createElement('div');
+    div.className = `message ${sender}`;
+
+    const time = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const avatar = sender === 'user' ? 'fa-user' : 'fa-robot';
+    const label = senderLabel || (sender === 'user' ? 'You' : 'FarmBuddy AI');
+
+    div.innerHTML = `
+        <div class="message-avatar"><i class="fas ${avatar}"></i></div>
+        <div class="message-content">
+            <div class="message-header">
+                <span class="message-sender">${label}</span>
+                <span class="message-time">${time}</span>
             </div>
-            <div class="response-content">
-                ${entityHTML || ''}
-                <p>${response.replace(/\n/g, '<br>')}</p>
-                ${detectedLang !== 'en' ? `<p class="translation-note"><i class="fas fa-language"></i> Translated from English to ${langName}</p>` : ''}
-            </div>
-            <div class="response-footer">
-                <button class="listen-btn" onclick="textToSpeech(this)"><i class="fas fa-volume-up"></i> Listen</button>
-                <div class="response-actions">
-                    <button onclick="shareResponse(this)"><i class="fas fa-share-alt"></i></button>
-                    <button onclick="bookmarkResponse(this)"><i class="far fa-bookmark"></i></button>
-                </div>
+            <div class="message-text">${text}</div>
+            <div class="message-actions">
+                <button class="action-btn" onclick="copyMsg(this)" title="Copy">
+                    <i class="far fa-copy"></i>
+                </button>
+                <button class="action-btn" onclick="textToSpeech(this)" title="Listen">
+                    <i class="fas fa-volume-up"></i>
+                </button>
+                ${sender === 'ai' ? `
+                <button class="action-btn" onclick="bookmarkResponse(this)" title="Bookmark">
+                    <i class="far fa-bookmark"></i>
+                </button>
+                <button class="action-btn" onclick="shareResponse(this)" title="Share">
+                    <i class="fas fa-share-alt"></i>
+                </button>` : ''}
             </div>
         </div>
     `;
-    
-    if (responseArea) {
-        responseArea.innerHTML = responseHTML + (responseArea.innerHTML || '');
-    }
+
+    messagesContainer.appendChild(div);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-function setupQuickActions() {
-    window.setQuery = async function(type) {
-        if (!queryInput) return;
-        
-        const queries = {
-            crop: "How to grow tomatoes in rainy season?",
-            market: "What's the price of wheat in Punjab?",
-            schemes: "What government schemes are available for farmers?",
-            disease: "My tomato plants have yellow leaves with brown spots."
-        };
-        
-        queryInput.value = queries[type];
-        await submitQuery();
+// ─── Typing Indicator ─────────────────────────────────────────────────────────
+function showTypingIndicator() {
+    if (!messagesContainer) return;
+    const div = document.createElement('div');
+    div.className = 'message ai';
+    div.id = 'typingIndicator';
+    div.innerHTML = `
+        <div class="message-avatar"><i class="fas fa-robot"></i></div>
+        <div class="message-content">
+            <div class="typing-indicator">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+    `;
+    messagesContainer.appendChild(div);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function hideTypingIndicator() {
+    const el = document.getElementById('typingIndicator');
+    if (el) el.remove();
+}
+
+// ─── Quick Action Buttons ─────────────────────────────────────────────────────
+window.setQuery = async function (type) {
+    const queries = {
+        crop:    'How to grow tomatoes in rainy season?',
+        market:  "What's the price of wheat in Punjab?",
+        schemes: 'What government schemes are available for farmers?',
+        disease: 'My tomato plants have yellow leaves with brown spots.'
     };
-}
+    if (!queryInput) return;
+    queryInput.value = queries[type];
+    autoResizeTextarea();
+    await submitQuery();
+};
 
-window.textToSpeech = function(button) {
-    const responseCard = button.closest('.response-card');
-    if (!responseCard) return;
-    
-    const content = responseCard.querySelector('.response-content');
+// ─── Text-to-Speech ───────────────────────────────────────────────────────────
+window.textToSpeech = function (button) {
+    const content = button.closest('.message-content');
     if (!content) return;
-    
-    const text = content.innerText;
-    
+    const text = content.querySelector('.message-text').innerText;
+
     if (!('speechSynthesis' in window)) {
-        showNotification('Text-to-speech not supported in this browser', 'error');
+        showNotification('Text-to-speech not supported', 'error');
         return;
     }
-    
+
     const lang = languageSelect ? languageSelect.value : 'en';
-    
     window.speechSynthesis.cancel();
-    
+
     const utterance = new SpeechSynthesisUtterance(text);
-    
-    if (lang === 'hi') utterance.lang = 'hi-IN';
-    else if (lang === 'ta') utterance.lang = 'ta-IN';
-    else if (lang === 'te') utterance.lang = 'te-IN';
-    else if (lang === 'bn') utterance.lang = 'bn-IN';
-    else if (lang === 'mr') utterance.lang = 'mr-IN';
-    else if (lang === 'gu') utterance.lang = 'gu-IN';
-    else if (lang === 'kn') utterance.lang = 'kn-IN';
-    else if (lang === 'ml') utterance.lang = 'ml-IN';
-    else if (lang === 'pa') utterance.lang = 'pa-IN';
-    else if (lang === 'ur') utterance.lang = 'ur-PK';
-    else utterance.lang = 'en-US';
-    
-    utterance.rate = 1;
-    utterance.pitch = 1;
-    utterance.volume = 1;
-    
-    utterance.onstart = () => {
-        button.innerHTML = '<i class="fas fa-stop"></i> Stop';
-    };
-    
-    utterance.onend = () => {
-        button.innerHTML = '<i class="fas fa-volume-up"></i> Listen';
-    };
-    
-    utterance.onerror = () => {
-        button.innerHTML = '<i class="fas fa-volume-up"></i> Listen';
-    };
-    
+    const langMap = { hi:'hi-IN', ta:'ta-IN', te:'te-IN', bn:'bn-IN', mr:'mr-IN',
+                      gu:'gu-IN', kn:'kn-IN', ml:'ml-IN', pa:'pa-IN', ur:'ur-PK' };
+    utterance.lang = langMap[lang] || 'en-US';
+    utterance.rate = 1; utterance.pitch = 1; utterance.volume = 1;
+
+    utterance.onstart = () => { button.querySelector('i').className = 'fas fa-stop'; };
+    utterance.onend   = () => { button.querySelector('i').className = 'fas fa-volume-up'; };
+    utterance.onerror = () => { button.querySelector('i').className = 'fas fa-volume-up'; };
+
     window.speechSynthesis.speak(utterance);
 };
 
-window.shareResponse = function(button) {
-    const responseCard = button.closest('.response-card');
-    if (!responseCard) return;
-    
-    const text = responseCard.querySelector('.response-content').innerText;
-    
+// ─── Copy ─────────────────────────────────────────────────────────────────────
+window.copyMsg = async function (button) {
+    const text = button.closest('.message-content').querySelector('.message-text').innerText;
+    try {
+        await navigator.clipboard.writeText(text);
+        showNotification('Copied to clipboard!', 'success');
+    } catch (_) {
+        showNotification('Failed to copy', 'error');
+    }
+};
+
+// ─── Share ────────────────────────────────────────────────────────────────────
+window.shareResponse = function (button) {
+    const text = button.closest('.message-content').querySelector('.message-text').innerText;
     if (navigator.share) {
-        navigator.share({
-            title: 'FarmBuddy Advice',
-            text: text,
-            url: window.location.href
-        }).catch(() => {
-            copyToClipboard(text);
-        });
+        navigator.share({ title: 'FarmBuddy Advice', text, url: window.location.href }).catch(() => copyToClipboard(text));
     } else {
         copyToClipboard(text);
     }
@@ -479,352 +523,220 @@ window.shareResponse = function(button) {
 function copyToClipboard(text) {
     navigator.clipboard.writeText(text).then(() => {
         showNotification('Copied to clipboard!', 'success');
-    }).catch(() => {
-        showNotification('Failed to copy', 'error');
-    });
+    }).catch(() => showNotification('Failed to copy', 'error'));
 }
 
-window.bookmarkResponse = function(button) {
+// ─── Bookmark ─────────────────────────────────────────────────────────────────
+window.bookmarkResponse = function (button) {
     const icon = button.querySelector('i');
-    const responseCard = button.closest('.response-card');
-    
-    if (!icon || !responseCard) return;
-    
+    const content = button.closest('.message-content');
+    if (!icon || !content) return;
+
     icon.classList.toggle('far');
     icon.classList.toggle('fas');
-    
+
     if (icon.classList.contains('fas')) {
-        saveToBookmarks(responseCard);
+        let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+        bookmarks.push({
+            id: Date.now(),
+            title: 'FarmBuddy AI',
+            content: content.querySelector('.message-text').innerHTML,
+            timestamp: new Date().toISOString()
+        });
+        if (bookmarks.length > 20) bookmarks = bookmarks.slice(-20);
+        localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
         showNotification('Saved to bookmarks', 'success');
     } else {
         showNotification('Removed from bookmarks', 'info');
     }
 };
 
-function showLoading() {
-    if (loading) loading.style.display = 'block';
-}
+// ─── Loading ──────────────────────────────────────────────────────────────────
+function showLoading() { if (loading) loading.style.display = 'flex'; }
+function hideLoading()  { if (loading) loading.style.display = 'none'; }
 
-function hideLoading() {
-    if (loading) loading.style.display = 'none';
-}
-
+// ─── Notifications ────────────────────────────────────────────────────────────
 function showNotification(message, type = 'info') {
     const existing = document.querySelector('.notification');
     if (existing) existing.remove();
-    
-    const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    
-    const icons = {
-        success: 'fa-check-circle',
-        error: 'fa-exclamation-circle',
-        warning: 'fa-exclamation-triangle',
-        info: 'fa-info-circle'
-    };
-    
-    notification.innerHTML = `
-        <i class="fas ${icons[type] || icons.info}"></i>
-        <span>${message}</span>
-    `;
-    
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    notification.style.cssText = `
-        position: fixed;
-        top: 80px;
-        right: 20px;
-        background: ${isDark ? '#1a1a1a' : 'white'};
-        color: ${isDark ? '#00ff88' : '#2e7d32'};
-        padding: 12px 24px;
-        border-radius: 30px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        z-index: 1000;
-        animation: slideIn 0.3s ease;
-        border: 2px solid ${isDark ? '#00ff88' : '#2e7d32'};
-        font-weight: 500;
-    `;
-    
-    document.body.appendChild(notification);
-    
+
+    const icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle',
+                    warning: 'fa-exclamation-triangle', info: 'fa-info-circle' };
+
+    const n = document.createElement('div');
+    n.className = `notification ${type}`;
+    n.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i><span>${message}</span>`;
+    document.body.appendChild(n);
+
     setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => notification.remove(), 300);
+        n.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => n.remove(), 300);
     }, 3000);
 }
 
+// ─── History (localStorage) ───────────────────────────────────────────────────
 function saveQueryToHistory(query) {
     if (!query.trim()) return;
-    
     let history = JSON.parse(localStorage.getItem('queryHistory') || '[]');
-    history.push({
-        query: query,
-        timestamp: new Date().toISOString()
-    });
-    
-    if (history.length > 20) {
-        history = history.slice(-20);
-    }
-    
+    history.push({ query, timestamp: new Date().toISOString() });
+    if (history.length > 20) history = history.slice(-20);
     localStorage.setItem('queryHistory', JSON.stringify(history));
 }
 
-function saveToBookmarks(card) {
-    let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
-    const content = card.querySelector('.response-content').innerHTML;
-    const header = card.querySelector('.response-header h4').innerText;
-    
-    bookmarks.push({
-        id: Date.now(),
-        title: header,
-        content: content,
-        timestamp: new Date().toISOString()
-    });
-    
-    if (bookmarks.length > 20) {
-        bookmarks = bookmarks.slice(-20);
-    }
-    
-    localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+// ─── Conversation Management ──────────────────────────────────────────────────
+function loadConversations() {
+    const saved = localStorage.getItem('farmbuddy_conversations');
+    return saved ? JSON.parse(saved) : [];
 }
 
-function setupNavigation() {
-    if (!navItems || navItems.length === 0) return;
-    
-    navItems.forEach(item => {
-        item.addEventListener('click', function() {
-            navItems.forEach(nav => nav.classList.remove('active'));
-            this.classList.add('active');
-            
-            const icon = this.querySelector('i').className;
-            if (icon.includes('fa-history')) {
-                showHistory();
-            } else if (icon.includes('fa-bookmark')) {
-                showSaved();
-            } else if (icon.includes('fa-user')) {
-                showProfile();
-            } else {
-                showHome();
-            }
-        });
-    });
-    
-    if (fabButton) {
-        fabButton.addEventListener('click', () => {
-            if (voiceBtn) voiceBtn.click();
-        });
-    }
+function saveConversations() {
+    localStorage.setItem('farmbuddy_conversations', JSON.stringify(conversations));
 }
 
-function showHistory() {
-    if (!responseArea) return;
-    
-    const history = JSON.parse(localStorage.getItem('queryHistory') || '[]');
-    
-    if (history.length === 0) {
-        responseArea.innerHTML = `
-            <div class="response-card">
-                <div class="response-header">
-                    <div class="avatar"><i class="fas fa-history"></i></div>
-                    <div>
-                        <h4>Query History</h4>
-                    </div>
-                </div>
-                <div style="text-align: center; padding: 30px;">
-                    <i class="fas fa-search"></i>
-                    <p>No history yet. Start asking questions!</p>
-                </div>
-            </div>
-        `;
+function getOrCreateConversation() {
+    if (conversations.length === 0) {
+        const c = { id: Date.now().toString(), title: 'New Conversation', messages: [], timestamp: new Date().toISOString() };
+        conversations.push(c);
+        saveConversations();
+        return c.id;
+    }
+    return conversations[0].id;
+}
+
+function saveMessage(text, sender) {
+    const conv = conversations.find(c => c.id === currentConversationId);
+    if (!conv) return;
+
+    conv.messages.push({ text, sender, timestamp: new Date().toISOString() });
+
+    // Title from first user message
+    if (sender === 'user' && conv.messages.filter(m => m.sender === 'user').length === 1) {
+        const plain = text.replace(/<[^>]*>/g, '');
+        conv.title = plain.substring(0, 35) + (plain.length > 35 ? '…' : '');
+    }
+
+    conv.timestamp = new Date().toISOString();
+    saveConversations();
+    renderHistory();
+}
+
+function loadCurrentConversation() {
+    const conv = conversations.find(c => c.id === currentConversationId);
+    if (!conv || conv.messages.length === 0) return;
+
+    if (messagesContainer) messagesContainer.innerHTML = '';
+    conv.messages.forEach(m => addMessageToUI(m.text, m.sender));
+}
+
+function newChat() {
+    const c = { id: Date.now().toString(), title: 'New Conversation', messages: [], timestamp: new Date().toISOString() };
+    conversations.unshift(c);
+    currentConversationId = c.id;
+    saveConversations();
+
+    if (messagesContainer) messagesContainer.innerHTML = '';
+
+    // Show welcome immediately
+    loadInitialData();
+    renderHistory();
+
+    if (window.innerWidth <= 768) toggleSidebar();
+}
+
+function loadConversation(id) {
+    currentConversationId = id;
+    if (messagesContainer) messagesContainer.innerHTML = '';
+    loadCurrentConversation();
+    renderHistory();
+    if (window.innerWidth <= 768) toggleSidebar();
+}
+window.loadConversation = loadConversation;
+
+function deleteConversation(id, event) {
+    event.stopPropagation();
+    if (!confirm('Delete this conversation?')) return;
+
+    conversations = conversations.filter(c => c.id !== id);
+
+    if (conversations.length === 0) {
+        newChat();
+    } else {
+        if (currentConversationId === id) {
+            currentConversationId = conversations[0].id;
+            if (messagesContainer) messagesContainer.innerHTML = '';
+            loadCurrentConversation();
+        }
+    }
+
+    saveConversations();
+    renderHistory();
+}
+window.deleteConversation = deleteConversation;
+
+function renderHistory() {
+    if (!historyList) return;
+
+    if (conversations.length === 0) {
+        historyList.innerHTML = `<div class="empty-history"><i class="fas fa-comment"></i><p>No conversations yet</p></div>`;
         return;
     }
-    
-    let html = '<h3>Recent Queries</h3>';
-    history.reverse().forEach(item => {
-        const date = new Date(item.timestamp).toLocaleString();
-        html += `
-            <div class="response-card" style="cursor: pointer;" onclick="document.getElementById('queryInput').value = '${item.query.replace(/'/g, "\\'")}'; document.querySelector('.nav-item.active')?.classList.remove('active'); document.querySelector('.nav-item:first-child')?.classList.add('active');">
-                <div class="response-header">
-                    <div class="avatar"><i class="fas fa-history"></i></div>
-                    <div>
-                        <h4>${date}</h4>
-                        <p class="time">Click to reuse</p>
-                    </div>
-                </div>
-                <p>${item.query}</p>
-            </div>
-        `;
-    });
-    responseArea.innerHTML = html;
-}
 
-function showSaved() {
-    if (!responseArea) return;
-    
-    const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
-    
-    if (bookmarks.length === 0) {
-        responseArea.innerHTML = `
-            <div class="response-card">
-                <div class="response-header">
-                    <div class="avatar"><i class="fas fa-bookmark"></i></div>
-                    <div>
-                        <h4>Saved Items</h4>
-                    </div>
-                </div>
-                <div style="text-align: center; padding: 30px;">
-                    <i class="far fa-bookmark"></i>
-                    <p>No saved items yet.</p>
-                </div>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = '<h3>Saved Items</h3>';
-    bookmarks.reverse().forEach(bookmark => {
-        html += `
-            <div class="response-card">
-                <div class="response-header">
-                    <div class="avatar"><i class="fas fa-bookmark"></i></div>
-                    <div>
-                        <h4>${bookmark.title || 'Saved Advice'}</h4>
-                        <p class="time">Saved on ${new Date(bookmark.timestamp).toLocaleDateString()}</p>
-                    </div>
-                </div>
-                <div class="response-content">
-                    ${bookmark.content}
-                </div>
-                <div class="response-footer">
-                    <button class="listen-btn" onclick="textToSpeech(this)"><i class="fas fa-volume-up"></i> Listen</button>
-                </div>
-            </div>
-        `;
-    });
-    responseArea.innerHTML = html;
-}
-
-function showProfile() {
-    if (!responseArea) return;
-    
-    const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]').length;
-    const history = JSON.parse(localStorage.getItem('queryHistory') || '[]').length;
-    
-    responseArea.innerHTML = `
-        <div class="response-card">
-            <div class="response-header">
-                <div class="avatar"><i class="fas fa-user"></i></div>
-                <div>
-                    <h4>Farmer Profile</h4>
-                    <p class="time">Member since ${new Date().toLocaleDateString()}</p>
-                </div>
-            </div>
-            <div style="padding: 20px; text-align: center;">
-                <div style="width: 100px; height: 100px; border-radius: 50%; background: linear-gradient(135deg, var(--green-primary), var(--green-secondary)); margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
-                    <i class="fas fa-seedling" style="font-size: 3rem; color: white;"></i>
-                </div>
-                <h3>Welcome, Farmer!</h3>
-                <p>Your personal farming assistant</p>
-                
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
-                    <div style="background: var(--bg-input); padding: 20px; border-radius: 20px;">
-                        <i class="fas fa-comment" style="font-size: 2rem; color: var(--green-primary);"></i>
-                        <p style="font-size: 2rem; font-weight: bold;">${history}</p>
-                        <p>Queries</p>
-                    </div>
-                    <div style="background: var(--bg-input); padding: 20px; border-radius: 20px;">
-                        <i class="fas fa-bookmark" style="font-size: 2rem; color: var(--green-primary);"></i>
-                        <p style="font-size: 2rem; font-weight: bold;">${bookmarks}</p>
-                        <p>Saved</p>
-                    </div>
-                </div>
-            </div>
+    historyList.innerHTML = conversations.map(c => `
+        <div class="history-item ${c.id === currentConversationId ? 'active' : ''}"
+             data-id="${c.id}"
+             onclick="loadConversation('${c.id}')">
+            <i class="fas fa-comment"></i>
+            <span>${c.title}</span>
+            <button class="delete-btn" onclick="deleteConversation('${c.id}', event)">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
-    `;
+    `).join('');
 }
 
-function showHome() {
-    window.location.reload();
+function filterHistory() {
+    const term = searchInput ? searchInput.value.toLowerCase() : '';
+    document.querySelectorAll('.history-item').forEach(item => {
+        const text = item.querySelector('span').textContent.toLowerCase();
+        item.style.display = text.includes(term) ? 'flex' : 'none';
+    });
 }
 
+// ─── Welcome / Initial Load ───────────────────────────────────────────────────
 async function loadInitialData() {
     await loadFAQs('en');
-    
-    setTimeout(() => {
-        if (responseArea) {
-            const welcomeHTML = `
-                <div class="response-card">
-                    <div class="response-header">
-                        <div class="avatar"><i class="fas fa-robot"></i></div>
-                        <div>
-                            <h4>FarmBuddy AI</h4>
-                            <p class="time">Welcome</p>
-                        </div>
-                    </div>
-                    <div class="response-content">
-                        <p><strong>Welcome to FarmBuddy!</strong></p>
-                        <p>I can help you with:</p>
-                        <div class="info-box">
-                            <p><i class="fas fa-seedling"></i> Crop advisory and farming tips</p>
-                            <p><i class="fas fa-chart-line"></i> Market prices for all crops</p>
-                            <p><i class="fas fa-file-alt"></i> Government scheme information</p>
-                            <p><i class="fas fa-search"></i> Disease detection from photos</p>
-                            <p><i class="fas fa-language"></i> Support for 22 Indian languages</p>
-                        </div>
-                        <p>How can I help you today?</p>
-                    </div>
-                </div>
-            `;
-            responseArea.innerHTML = welcomeHTML + responseArea.innerHTML;
-        }
-    }, 500);
+
+    const conv = conversations.find(c => c.id === currentConversationId);
+    // Only show welcome if no messages yet
+    if (conv && conv.messages.length > 0) return;
+
+    const welcomeHTML = `
+        <p>🌾 <strong>Welcome to FarmBuddy!</strong></p>
+        <p>I can help you with:</p>
+        <div class="info-box">
+            <p><i class="fas fa-seedling"></i> Crop advisory and farming tips</p>
+            <p><i class="fas fa-chart-line"></i> Market prices for all crops</p>
+            <p><i class="fas fa-file-alt"></i> Government scheme information</p>
+            <p><i class="fas fa-search"></i> Disease detection from photos</p>
+            <p><i class="fas fa-language"></i> Support for 22 Indian languages</p>
+        </div>
+        <p>How can I help you today?</p>
+    `;
+    addMessageToUI(welcomeHTML, 'ai', 'FarmBuddy AI');
 }
 
-function setupEventListeners() {
-    setupVoiceInput();
-    setupImageUpload();
-    setupVideoUpload();
-    setupQueryInput();
-    setupQuickActions();
-    setupNavigation();
-}
-
+// ─── Animation Styles ─────────────────────────────────────────────────────────
 function addAnimationStyles() {
     const style = document.createElement('style');
     style.textContent = `
         @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+            to   { transform: translateX(0);    opacity: 1; }
         }
-        
         @keyframes slideOut {
-            from { transform: translateX(0); opacity: 1; }
-            to { transform: translateX(100%); opacity: 0; }
-        }
-        
-        .translation-note {
-            font-size: 0.85rem;
-            padding: 5px 10px;
-            background: var(--green-dim);
-            border-radius: 20px;
-            display: inline-block;
+            from { transform: translateX(0);    opacity: 1; }
+            to   { transform: translateX(100%); opacity: 0; }
         }
     `;
     document.head.appendChild(style);
-}
-// Add this to setupEventListeners
-function setupEventListeners() {
-    setupVoiceInput();
-    setupImageUpload();
-    setupVideoUpload();
-    setupQueryInput();
-    setupQuickActions();
-    setupNavigation();
-    
-    // Send button click handler
-    const sendBtn = document.getElementById('sendBtn');
-    if (sendBtn) {
-        sendBtn.addEventListener('click', submitQuery);
-    }
 }

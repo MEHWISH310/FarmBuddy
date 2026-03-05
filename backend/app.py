@@ -23,14 +23,9 @@ from data_processor.analyze_prices import PriceAnalyzer
 from vision.predict_disease import DiseasePredictor
 
 app = Flask(__name__)
-# Updated CORS to include all possible origins
-CORS(app, origins=[
-    'http://127.0.0.1:5500', 
-    'http://localhost:5500', 
-    'http://localhost:8000',
-    'http://127.0.0.1:5500/frontend',
-    'http://localhost:5500/frontend'
-])
+
+# ✅ FIXED: Allow all origins (including null origin from local files)
+CORS(app, origins="*", supports_credentials=False)
 
 # Initialize components
 translator = LanguageTranslator()
@@ -74,7 +69,6 @@ def get_report():
 @app.route('/api/schemes', methods=['GET'])
 def get_schemes():
     try:
-        # Try multiple possible locations
         possible_paths = [
             os.path.join(RAW_DATA_DIR, 'schemes.json'),
             os.path.join(DATA_DIR, 'schemes.json'),
@@ -99,7 +93,6 @@ def get_schemes():
 @app.route('/api/faqs', methods=['GET'])
 def get_faqs():
     try:
-        # Try multiple possible locations
         possible_paths = [
             os.path.join(RAW_DATA_DIR, 'faq_dataset.json'),
             os.path.join(DATA_DIR, 'faq_dataset.json'),
@@ -108,10 +101,8 @@ def get_faqs():
         ]
         
         faqs = None
-        faq_path = None
         for path in possible_paths:
             if os.path.exists(path):
-                faq_path = path
                 with open(path, 'r', encoding='utf-8') as f:
                     faqs = json.load(f)
                 break
@@ -142,7 +133,6 @@ def search_faqs():
         if not query:
             return jsonify({"error": "Please provide search query"}), 400
         
-        # Try multiple possible locations
         possible_paths = [
             os.path.join(RAW_DATA_DIR, 'faq_dataset.json'),
             os.path.join(DATA_DIR, 'faq_dataset.json'),
@@ -176,7 +166,6 @@ def search_faqs():
 @app.route('/api/advisory/<crop>', methods=['GET'])
 def get_crop_advisory(crop):
     try:
-        # Try multiple possible locations
         possible_paths = [
             os.path.join(RAW_DATA_DIR, 'crop_advisory.json'),
             os.path.join(DATA_DIR, 'crop_advisory.json'),
@@ -212,10 +201,8 @@ def chat():
         if not query:
             return jsonify({"error": "No query provided"}), 400
         
-        # Translate to English if needed
         english_query, original_lang = translator.translate_to_english(query)
         
-        # Detect intent
         intent = 'general'
         if any(word in english_query.lower() for word in ['price', 'rate', 'cost', 'market', 'mandi', 'भाव']):
             intent = 'market_price'
@@ -226,7 +213,6 @@ def chat():
         elif any(word in english_query.lower() for word in ['advisory', 'grow', 'plant', 'fertilizer', 'खाद']):
             intent = 'advisory'
         
-        # Extract entities (crop names)
         entities = {}
         crops = ['wheat', 'rice', 'onion', 'potato', 'tomato', 'bajra', 'maize', 
                  'cotton', 'sugarcane', 'groundnut', 'soybean', 'mustard', 'बाजरा', 
@@ -237,7 +223,6 @@ def chat():
                 entities['crop'] = crop
                 break
         
-        # Extract state if mentioned
         states = ['punjab', 'haryana', 'uttar pradesh', 'maharashtra', 'karnataka', 
                   'tamil nadu', 'andhra pradesh', 'madhya pradesh', 'rajasthan', 'gujarat',
                   'पंजाब', 'हरियाणा', 'उत्तर प्रदेश', 'महाराष्ट्र']
@@ -247,13 +232,11 @@ def chat():
                 entities['state'] = state
                 break
         
-        # Generate response based on intent
         response = ""
         
         if intent == 'market_price':
             if entities.get('crop'):
-                # Get real price data
-                state = entities.get('state', 'maharashtra')  # Default to Maharashtra
+                state = entities.get('state', 'maharashtra')
                 price_result = price_analyzer.get_crop_price(entities['crop'], state)
                 
                 if 'error' not in price_result:
@@ -263,7 +246,6 @@ def chat():
                     response += f"📈 **Max Price:** ₹{price_result['max_price']}/quintal\n"
                     response += f"📍 **Market:** {price_result['market']}\n"
                     response += f"📅 **Date:** {price_result['date']}\n"
-                    
                     if price_result.get('arrival_quantity'):
                         response += f"📦 **Arrival:** {price_result['arrival_quantity']} quintals\n"
                 else:
@@ -273,15 +255,13 @@ def chat():
         
         elif intent == 'scheme':
             try:
-                # Load schemes from JSON
                 schemes_path = os.path.join(RAW_DATA_DIR, 'schemes.json')
                 if os.path.exists(schemes_path):
                     with open(schemes_path, 'r', encoding='utf-8') as f:
                         schemes = json.load(f)
-                    
                     if schemes and len(schemes) > 0:
                         response = "📋 **Government Schemes for Farmers:**\n\n"
-                        for i, scheme in enumerate(schemes[:3], 1):  # Show top 3
+                        for i, scheme in enumerate(schemes[:3], 1):
                             response += f"{i}. **{scheme.get('name', 'Scheme')}**\n"
                             response += f"   {scheme.get('description', '')[:100]}...\n\n"
                         response += "Type 'more schemes' to see all or visit /api/schemes"
@@ -295,7 +275,6 @@ def chat():
         elif intent == 'advisory':
             if entities.get('crop'):
                 try:
-                    # Load crop advisory from JSON
                     advisory_path = os.path.join(RAW_DATA_DIR, 'crop_advisory.json')
                     if os.path.exists(advisory_path):
                         with open(advisory_path, 'r', encoding='utf-8') as f:
@@ -328,7 +307,6 @@ def chat():
             response = "🔍 **Disease Detection**\n\nPlease upload a photo of your plant using the camera button above, and I'll identify any diseases and suggest treatments."
         
         else:
-            # General greeting or unknown query
             if any(word in english_query.lower() for word in ['hi', 'hello', 'namaste']):
                 response = "👋 **Namaste!** I'm FarmBuddy, your AI farming assistant. How can I help you today?\n\n"
                 response += "You can ask me about:\n"
@@ -342,7 +320,6 @@ def chat():
                 response += "• Government schemes: 'Show me farmer schemes'\n"
                 response += "• Crop advice: 'How to grow tomatoes?'"
         
-        # Translate response if original language wasn't English
         if original_lang != 'en':
             response = translator.translate_text(response, original_lang)
         
@@ -377,22 +354,16 @@ def predict_disease():
         temp_path = os.path.join(UPLOAD_DIR, filename)
         file.save(temp_path)
         
-        # Check if file was saved successfully
         if not os.path.exists(temp_path):
             return jsonify({"error": "Failed to save image"}), 500
         
         result = disease_predictor.predict(temp_path)
-        
-        # Clean up - remove the file after processing (optional)
-        # os.remove(temp_path)
-        
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    """Health check endpoint to verify API is running"""
     return jsonify({
         "status": "ok", 
         "message": "FarmBuddy API is running",
@@ -417,6 +388,22 @@ def home():
             "/api/chat (POST)"
         ]
     })
+
+@app.route('/api/translate', methods=['POST'])
+def translate_text_api():
+    try:
+        data = request.json
+        text = data.get('text', '')
+        target_lang = data.get('target_lang', 'en')
+        
+        if not text or target_lang == 'en':
+            return jsonify({'translated_text': text})
+        
+        translated = translator.translate_text(text, target_lang)
+        return jsonify({'translated_text': translated})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     print(f"🚀 FarmBuddy Backend Starting...")

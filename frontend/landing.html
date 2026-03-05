@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FarmBuddy AI - Smart Agricultural Assistant</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="landing.css">
+</head>
+<body>
+  <!-- Modal for footer links -->
+  <div class="modal" id="modal">
+    <div class="modal-content">
+      <span class="modal-close" onclick="closeModal()">&times;</span>
+      <h3 id="modal-title">Coming Soon</h3>
+      <p id="modal-description">We're working on this feature. Leave your email to get notified!</p>
+      <input type="email" class="modal-input" placeholder="Your email address" id="modal-email">
+      <button class="modal-btn" onclick="notifyMe()">Notify Me</button>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <div class="logo">
+        <div class="logo-icon"></div>
+        <div class="logo-text">
+          <h1>FarmBuddy</h1>
+          <span>AI Agricultural Advisor</span>
+        </div>
+      </div>
+      <div class="nav-links">
+        <a href="#home" class="nav-link active">Home</a>
+        <a href="#about" class="nav-link">About Us</a>
+        <a href="#features" class="nav-link">Features</a>
+        <a href="#technology" class="nav-link">Technology</a>
+        <a href="#contact" class="nav-link">Contact</a>
+        <a href="index.html" class="launch-btn">Launch App</a>
+        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode">
+          <span>🌙</span>
+        </button>
+      </div>
+      <div class="mobile-menu-btn">☰</div>
+    </div>
+  </nav>
+
+  <!-- Mobile menu -->
+  <div class="mobile-menu">
+    <a href="#home" class="mobile-link">Home</a>
+    <a href="#about" class="mobile-link">About Us</a>
+    <a href="#features" class="mobile-link">Features</a>
+    <a href="#technology" class="mobile-link">Technology</a>
+    <a href="#contact" class="mobile-link">Contact</a>
+    <a href="index.html" class="mobile-launch">Launch App</a>
+    <div style="text-align: center; margin-top: 16px;">
+      <button class="theme-toggle" onclick="toggleTheme()" style="display: inline-flex;">🌙</button>
+    </div>
+  </div>
+
+  <!-- Hero Section -->
+  <section id="home" class="hero">
+    <div class="hero-content">
+      <div class="hero-badge">AI-POWERED FARMING ASSISTANT</div>
+      <h1 class="hero-title">Empowering Farmers with <span class="highlight">Artificial Intelligence</span></h1>
+      <p class="hero-subtitle">Multimodal · Multilingual · Real-time Advisory</p>
+      <p class="hero-description">
+        FarmBuddy AI bridges the information gap in rural agriculture with intelligent crop advisory, 
+        market prices, disease detection, and government scheme information - all in your language.
+      </p>
+      <div class="hero-buttons">
+        <a href="index.html" class="btn-primary">Launch FarmBuddy →</a>
+        <a href="#about" class="btn-secondary">Learn More</a>
+      </div>
+      <div class="hero-stats">
+        <div class="stat-item">
+          <div class="stat-number">10K+</div>
+          <div class="stat-label">Farmers Served</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">38</div>
+          <div class="stat-label">Crop Diseases</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">5</div>
+          <div class="stat-label">Languages</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">24/7</div>
+          <div class="stat-label">Support</div>
+        </div>
+      </div>
+    </div>
+    <div class="hero-image">
+      <div class="image-container">
+        <div class="feature-card card-1">Crop Advisory</div>
+        <div class="feature-card card-2">Market Prices</div>
+        <div class="feature-card card-3">Govt Schemes</div>
+        <div class="feature-card card-4">Disease Detection</div>
+        <div class="main-icon"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- About Us Section -->
+  <section id="about" class="about">
+    <div class="section-header">
+      <span class="section-tag">About Us</span>
+      <h2 class="section-title">Bridging the <span class="highlight">Information Gap</span> in Rural Agriculture</h2>
+      <p class="section-subtitle">FarmBuddy AI is developed with a single mission - to empower every farmer with the power of artificial intelligence</p>
+    </div>
+
+    <div class="about-grid">
+      <div class="about-card">
+        <h3>Type of Application</h3>
+        <p>FarmBuddy is an AI-based agricultural advisory application. It is a multimodal and multilingual intelligent assistant for farmers. The application supports text, voice, and image-based inputs.</p>
+      </div>
+
+      <div class="about-card">
+        <h3>Objective</h3>
+        <p>The main objective is to provide timely and accurate information to farmers. It helps farmers with crop advisory, market prices, and government schemes. The system aims to reduce the information gap in rural agriculture.</p>
+      </div>
+
+      <div class="about-card">
+        <h3>Methodology</h3>
+        <p>The system uses Natural Language Processing (NLP) to understand farmer queries. Named Entity Recognition (NER) extracts crop, disease, and location details. A deep learning model is used for crop disease detection from images.</p>
+      </div>
+
+      <div class="about-card">
+        <h3>Datasets</h3>
+        <p>The project uses publicly available agricultural datasets. These include government market price data and crop disease image datasets. Datasets are sourced from official portals, Kaggle, and Mendeley.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="features">
+    <div class="section-header">
+      <span class="section-tag">Features</span>
+      <h2 class="section-title">Powerful <span class="highlight">AI Capabilities</span> for Modern Farming</h2>
+      <p class="section-subtitle">Everything a farmer needs, packed into one intelligent assistant</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-item">
+        <h4>Crop Advisory</h4>
+        <p>Get personalized crop recommendations based on soil type, season, and region using NLP and NER technology.</p>
+      </div>
+
+      <div class="feature-item">
+        <h4>Market Prices</h4>
+        <p>Live Minimum Support Prices (MSP) and market rates sourced directly from government agricultural portals.</p>
+      </div>
+
+      <div class="feature-item">
+        <h4>Government Schemes</h4>
+        <p>Complete information about PM-KISAN, Fasal Bima Yojana, and other agricultural welfare schemes.</p>
+      </div>
+
+      <div class="feature-item">
+        <h4>Disease Detection</h4>
+        <p>Upload crop images for instant disease diagnosis using deep learning models (96.4% accuracy).</p>
+      </div>
+
+      <div class="feature-item">
+        <h4>Weather Forecast</h4>
+        <p>Agricultural weather advisories based on IMD data and satellite imagery for better planning.</p>
+      </div>
+
+      <div class="feature-item">
+        <h4>Multilingual Support</h4>
+        <p>Interact in Hindi, Telugu, Kannada, and more - breaking language barriers in agricultural advisory.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Technology Section -->
+  <section id="technology" class="technology">
+    <div class="section-header">
+      <span class="section-tag">Technology</span>
+      <h2 class="section-title">Built with <span class="highlight">Cutting-Edge AI</span></h2>
+      <p class="section-subtitle">The technology stack that powers FarmBuddy AI</p>
+    </div>
+
+    <div class="tech-showcase">
+      <div class="tech-item">
+        <div class="tech-badge">NLP</div>
+        <h4>Natural Language Processing</h4>
+        <p>Understanding farmer queries in multiple languages and dialects with high accuracy.</p>
+      </div>
+
+      <div class="tech-item">
+        <div class="tech-badge">NER</div>
+        <h4>Named Entity Recognition</h4>
+        <p>Extracting crops, diseases, locations, and quantities from conversational text.</p>
+      </div>
+
+      <div class="tech-item">
+        <div class="tech-badge">DEEP LEARNING</div>
+        <h4>CNN ResNet50</h4>
+        <p>54,000+ plant disease images trained model with 96.4% accuracy across 38 disease classes.</p>
+      </div>
+
+      <div class="tech-item">
+        <div class="tech-badge">MULTIMODAL</div>
+        <h4>Text + Voice + Image</h4>
+        <p>Support for multiple input modes making it accessible for all farmers regardless of literacy.</p>
+      </div>
+    </div>
+
+    <div class="dataset-showcase">
+      <h3>Datasets Used</h3>
+      <div class="dataset-grid">
+        <div class="dataset-card">
+          <h5>PlantVillage Dataset</h5>
+          <p>54,000+ labeled images of healthy and diseased crop leaves</p>
+        </div>
+        <div class="dataset-card">
+          <h5>Agmarknet</h5>
+          <p>Government market price and MSP data across India</p>
+        </div>
+        <div class="dataset-card">
+          <h5>IMD Weather</h5>
+          <p>Indian Meteorological Department weather forecasts</p>
+        </div>
+        <div class="dataset-card">
+          <h5>Mendeley Data</h5>
+          <p>Supplementary crop disease and pest datasets</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact Section -->
+  <section id="contact" class="contact">
+    <div class="contact-container">
+      <div class="contact-info">
+        <h2>Ready to transform farming with AI?</h2>
+        <p>Launch FarmBuddy AI today and get instant agricultural advisory in your language.</p>
+        <div class="contact-details">
+          <div class="contact-item">contact@farmbuddy.ai</div>
+          <div class="contact-item">+91 1800-180-1551 (Toll Free)</div>
+          <div class="contact-item">Ministry of Agriculture, New Delhi</div>
+        </div>
+        <a href="index.html" class="btn-primary btn-large">Launch FarmBuddy App →</a>
+      </div>
+      <div class="contact-image">
+        <div class="contact-logo"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-logo">
+        <div class="logo-icon"></div>
+        <div class="logo-text">
+          <h3>FarmBuddy</h3>
+          <span>AI Agricultural Advisor</span>
+        </div>
+      </div>
+      <div class="footer-links">
+        <div class="footer-column">
+          <h4>Product</h4>
+          <a href="#features">Features</a>
+          <a href="#technology">Technology</a>
+          <a href="#about">About Us</a>
+        </div>
+        <div class="footer-column">
+          <h4>Support</h4>
+          <a href="#contact">Contact</a>
+          <a onclick="openModal('Help Center', 'Get assistance with FarmBuddy AI')">Help Center</a>
+          <a onclick="openModal('Privacy Policy', 'Read our privacy policy and data protection guidelines')">Privacy Policy</a>
+        </div>
+        <div class="footer-column">
+          <h4>Connect</h4>
+          <a onclick="openModal('Twitter', 'Follow us on Twitter for updates')">Twitter</a>
+          <a onclick="openModal('LinkedIn', 'Connect with us on LinkedIn')">LinkedIn</a>
+          <a onclick="openModal('Instagram', 'Follow us on Instagram')">Instagram</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 FarmBuddy AI - Empowering Indian Farmers with Artificial Intelligence</p>
+      <p class="credit">NLP · NER · Deep Learning · Multimodal · Multilingual</p>
+    </div>
+  </footer>
+
+  <script>
+    // Theme toggle
+    function toggleTheme() {
+      const body = document.documentElement;
+      const currentTheme = body.getAttribute('data-theme');
+      const btn = document.querySelectorAll('.theme-toggle span');
+      
+      if (currentTheme === 'dark') {
+        body.removeAttribute('data-theme');
+        btn.forEach(el => el.textContent = '🌙');
+      } else {
+        body.setAttribute('data-theme', 'dark');
+        btn.forEach(el => el.textContent = '☀️');
+      }
+    }
+
+    // Modal functions
+    function openModal(title, description) {
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('modal-description').textContent = description;
+      document.getElementById('modal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('modal').classList.remove('active');
+    }
+
+    function notifyMe() {
+      const email = document.getElementById('modal-email').value;
+      if (email) {
+        alert(`Thanks! We'll notify you at ${email}`);
+        document.getElementById('modal-email').value = '';
+        closeModal();
+      } else {
+        alert('Please enter your email');
+      }
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+      const modal = document.getElementById('modal');
+      if (event.target === modal) {
+        closeModal();
+      }
+    }
+
+    // Mobile menu toggle
+    document.querySelector('.mobile-menu-btn').addEventListener('click', function() {
+      document.querySelector('.mobile-menu').classList.toggle('active');
+    });
+
+    // Close mobile menu when clicking a link
+    document.querySelectorAll('.mobile-link, .mobile-launch').forEach(link => {
+      link.addEventListener('click', () => {
+        document.querySelector('.mobile-menu').classList.remove('active');
+      });
+    });
+
+    // Smooth scrolling for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    });
+
+    // Active nav link on scroll
+    window.addEventListener('scroll', () => {
+      const sections = document.querySelectorAll('section');
+      const navLinks = document.querySelectorAll('.nav-link');
+      
+      let current = '';
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop;
+        const sectionHeight = section.clientHeight;
+        if (scrollY >= (sectionTop - 200)) {
+          current = section.getAttribute('id');
+        }
+      });
+
+      navLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === `#${current}`) {
+          link.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

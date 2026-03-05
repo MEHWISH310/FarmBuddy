@@ -3,189 +3,173 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FarmBuddy - AI Farming Assistant</title>
+    <title>FarmBuddy AI - Intelligent Agricultural Assistant</title>
     
-    <!-- Font Awesome Icons -->
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Google Fonts - Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Main CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Theme Toggle -->
-    <button id="themeToggle" class="theme-toggle">
-        <i class="fas fa-sun"></i>
-        <i class="fas fa-moon" style="display: none;"></i>
-    </button>
-
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <div class="logo">
-                <img src="./image.png" alt="FarmBuddy Logo" class="logo-img" width="100" height="90">
-                <div>
-                    <h1>FarmBuddy</h1>
-                    <p>Intelligent Agricultural Assistant</p>
+    <!-- App Container -->
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <!-- Logo -->
+                <div class="sidebar-logo">
+                    <img src="./image.png" alt="FarmBuddy Logo" width="36" height="36" style="border-radius:8px; object-fit:cover;">
+                    <span>FarmBuddy</span>
                 </div>
-            </div>
-            
-            <div class="header-controls">
-                <select class="language-select">
-                    <option value="en">🇬🇧 English</option>
-                    <option value="hi">🇮🇳 हिन्दी</option>
-                    <option value="ta">🇮🇳 தமிழ்</option>
-                    <option value="te">🇮🇳 తెలుగు</option>
-                    <option value="bn">🇮🇳 বাংলা</option>
-                </select>
-
-                <button class="emergency-btn">
-                    <i class="fas fa-phone-alt"></i>
-                    <span>Emergency</span>
+                <button class="new-chat-btn" id="newChatBtn" title="New chat">
+                    <i class="fas fa-plus"></i>
+                </button>
+                <button class="close-sidebar" id="closeSidebar">
+                    <i class="fas fa-times"></i>
                 </button>
             </div>
-        </div>
 
-        <!-- Weather Widget -->
-        <div class="weather-widget">
-            <i class="fas fa-sun"></i>
-            <div class="weather-info">
-                <span class="weather-label">Local Weather</span>
-                <span class="weather-value">28°C | Sunny</span>
-            </div>
-        </div>
-
-        <!-- Hero -->
-        <div class="hero-section">
-            <h2>Your AI-Powered Farming Companion</h2>
-            <p>Get expert advice in your preferred language</p>
-        </div>
-
-        <!-- Input Section -->
-        <div class="input-section">
-    <div style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 20px;">
-        <textarea id="queryInput" rows="3" placeholder="Ask your farming question in any language..." style="flex: 1; margin-bottom: 0;"></textarea>
-        <button id="sendBtn" style="background: linear-gradient(135deg, #2e7d32, #4caf50); color: white; border: none; width: 60px; height: 60px; border-radius: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; box-shadow: 0 0 20px rgba(46, 125, 50, 0.2);">
-            <i class="fas fa-paper-plane"></i>
-        </button>
-    </div>
-    
-    <button class="voice-btn" id="voiceBtn">
-        <i class="fas fa-microphone"></i>
-        <span>Click to Speak</span>
-    </button>
-
-    <div class="upload-grid">
-        <div class="upload-box" onclick="document.getElementById('imageUpload').click()">
-            <i class="fas fa-camera"></i>
-            <p>Upload Photos</p>
-            <input type="file" id="imageUpload" accept="image/*" multiple style="display: none;">
-        </div>
-        <div class="upload-box" onclick="document.getElementById('videoUpload').click()">
-            <i class="fas fa-video"></i>
-            <p>Record Video</p>
-            <input type="file" id="videoUpload" accept="video/*" style="display: none;">
-        </div>
-    </div>
-
-    <div id="imagePreview" class="image-preview-grid"></div>
-</div>
-
-        <!-- Quick Actions -->
-        <div class="quick-actions">
-            <div class="action-card" onclick="setQuery('crop')">
-                <i class="fas fa-seedling"></i>
-                <h4>Crop Advisory</h4>
-                <p>Expert guidance</p>
-            </div>
-            <div class="action-card" onclick="setQuery('market')">
-                <i class="fas fa-chart-line"></i>
-                <h4>Market Prices</h4>
-                <p>Real-time rates</p>
-            </div>
-            <div class="action-card" onclick="setQuery('schemes')">
-                <i class="fas fa-file-alt"></i>
-                <h4>Govt Schemes</h4>
-                <p>Subsidies</p>
-            </div>
-            <div class="action-card" onclick="setQuery('disease')">
-                <i class="fas fa-search"></i>
-                <h4>Disease Detection</h4>
-                <p>Identify issues</p>
-            </div>
-        </div>
-
-        <!-- Response Area -->
-        <div id="responseArea">
-            <!-- Loading State -->
-            <div id="loading" class="loading-state" style="display: none;">
-                <div class="loading-spinner"></div>
-                <p>Analyzing your query...</p>
-                <div class="loading-icons">
-                    <i class="fas fa-seedling"></i>
-                    <i class="fas fa-sun"></i>
-                    <i class="fas fa-cloud-rain"></i>
-                </div>
+            <!-- Language Selector -->
+            <div class="language-selector-container">
+                <select class="language-select" id="languageSelect">
+                    <!-- Populated by JS -->
+                </select>
             </div>
 
-            <!-- Sample Response -->
-            <div class="response-card" id="sampleResponse">
-                <div class="response-header">
-                    <div class="avatar">
-                        <i class="fas fa-robot"></i>
+            <!-- Search Bar -->
+            <div class="search-container">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" placeholder="Search conversations..." class="search-input" id="searchInput">
+            </div>
+
+            <!-- Chat History -->
+            <div class="history-list" id="historyList"></div>
+
+            <!-- Sidebar Footer -->
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar">
+                        <i class="fas fa-seedling"></i>
                     </div>
-                    <div>
-                        <h4>FarmBuddy AI</h4>
-                        <p class="time">2 minutes ago</p>
+                    <div class="user-details">
+                        <span class="user-name">FarmBuddy</span>
+                        <span class="user-plan">Farmer Assistant</span>
                     </div>
                 </div>
-                <div class="response-content">
-                    <p>For tomato blight, here's what you need to do:</p>
-                    <div class="info-box">
-                        <p><i class="fas fa-check-circle"></i> Remove infected leaves immediately</p>
-                        <p><i class="fas fa-check-circle"></i> Apply copper-based fungicide every 7 days</p>
-                        <p><i class="fas fa-check-circle"></i> Water at base, avoid wetting leaves</p>
-                    </div>
-                </div>
-                <div class="response-footer">
-                    <button class="listen-btn" onclick="textToSpeech(this)">
-                        <i class="fas fa-volume-up"></i> Listen
+                <div class="footer-actions">
+                    <button class="theme-toggle-sidebar" id="themeToggle" title="Toggle theme">
+                        <i class="fas fa-moon"></i>
                     </button>
-                    <div class="response-actions">
-                        <button onclick="shareResponse(this)"><i class="fas fa-share-alt"></i></button>
-                        <button onclick="bookmarkResponse(this)"><i class="far fa-bookmark"></i></button>
-                    </div>
                 </div>
             </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Mobile Header -->
+            <div class="mobile-header">
+                <button class="menu-btn" id="menuBtn">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="mobile-title-group">
+                    <img src="./image.png" alt="Logo" width="28" height="28" style="border-radius:6px; object-fit:cover;">
+                    <h2 class="mobile-title">FarmBuddy AI</h2>
+                </div>
+                <button class="mobile-new-chat" id="mobileNewChat">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+
+            <!-- Weather Widget -->
+            <div class="weather-widget-top" id="weatherWidget">
+                <i class="fas fa-sun"></i>
+                <span>28°C | Sunny</span>
+                <span class="weather-divider">|</span>
+                <span>Local Weather</span>
+            </div>
+
+            <!-- Messages Container -->
+            <div class="messages" id="messages">
+                <!-- Welcome Message injected by JS via loadInitialData() -->
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="quick-actions-bar" id="quickActions">
+                <button class="quick-action" onclick="setQuery('crop')">
+                    <i class="fas fa-seedling"></i>
+                    <span>Crop Advisory</span>
+                </button>
+                <button class="quick-action" onclick="setQuery('market')">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Market Prices</span>
+                </button>
+                <button class="quick-action" onclick="setQuery('schemes')">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Govt Schemes</span>
+                </button>
+                <button class="quick-action" onclick="setQuery('disease')">
+                    <i class="fas fa-search"></i>
+                    <span>Disease Detection</span>
+                </button>
+            </div>
+
+            <!-- Input Area -->
+            <div class="input-area">
+                <!-- Image Preview -->
+                <div id="imagePreview" class="image-preview-container"></div>
+
+                <div class="input-container">
+                    <textarea
+                        id="queryInput"
+                        rows="1"
+                        placeholder="Ask your farming question in any language..."
+                        class="message-input"
+                    ></textarea>
+
+                    <div class="input-actions">
+                        <button class="input-action-btn" id="voiceBtn" title="Voice input">
+                            <i class="fas fa-microphone"></i>
+                        </button>
+                        <button class="input-action-btn" id="attachBtn" title="Upload photo">
+                            <i class="fas fa-camera"></i>
+                        </button>
+                        <button class="input-action-btn" id="videoAttachBtn" title="Upload video">
+                            <i class="fas fa-video"></i>
+                        </button>
+                        <button class="send-btn" id="sendBtn">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="disclaimer">
+                    FarmBuddy AI can make mistakes. Verify important information with experts.
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Hidden file inputs -->
+    <input type="file" id="imageUpload" accept="image/*" multiple style="display:none">
+    <input type="file" id="videoUpload" accept="video/*" style="display:none">
+
+    <!-- Loading Indicator -->
+    <div id="loading" class="loading-overlay" style="display:none;">
+        <div class="loading-spinner"></div>
+        <p>Analyzing your query...</p>
+        <div class="loading-icons">
+            <i class="fas fa-seedling"></i>
+            <i class="fas fa-sun"></i>
+            <i class="fas fa-cloud-rain"></i>
         </div>
-
-        <div style="height: 80px;"></div>
     </div>
 
-    <!-- Bottom Navigation -->
-    <div class="bottom-nav">
-        <button class="nav-item active">
-            <i class="fas fa-home"></i>
-            <span>Home</span>
-        </button>
-        <button class="nav-item">
-            <i class="fas fa-history"></i>
-            <span>History</span>
-        </button>
-        <button class="fab" id="fabButton">
-            <i class="fas fa-microphone"></i>
-        </button>
-        <button class="nav-item">
-            <i class="fas fa-bookmark"></i>
-            <span>Saved</span>
-        </button>
-        <button class="nav-item">
-            <i class="fas fa-user"></i>
-            <span>Profile</span>
-        </button>
-    </div>
+    <!-- Response area (hidden, used by old script for rendering cards into messages) -->
+    <div id="responseArea" style="display:none;"></div>
 
     <!-- JavaScript -->
     <script src="script.js"></script>

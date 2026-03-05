@@ -296,7 +296,7 @@ function displayDiseaseResult(data) {
         ${currentLang !== 'en' ? `<span class="translation-note"><i class="fas fa-language"></i> Showing in ${INDIAN_LANGUAGES[currentLang]}</span>` : ''}
     `;
 
-    addMessageToUI(text, 'ai', 'FarmBuddy AI — Disease Detection');
+    addMessageToUI(text, 'ai', 'FarmBuddy AI');
     saveMessage(text, 'ai');
 
     // Clear previews after 3s
@@ -359,7 +359,76 @@ async function submitQuery() {
     } catch (_) {
         hideTypingIndicator();
         hideLoading();
-        showNotification('Failed to get response', 'error');
+        showNotification('Backend offline — showing local response', 'warning');
+        const fallback = generateFallbackResponse(query);
+        addMessageToUI(fallback, 'ai', 'FarmBuddy AI');
+        saveMessage(fallback, 'ai');
+    }
+}
+
+function generateFallbackResponse(query) {
+    const q = query.toLowerCase();
+
+    if (q.includes('tomato') || q.includes('टमाटर') || q.includes('தக்காளி')) {
+        return `<strong>🍅 Growing Tomatoes:</strong>
+        <div class="info-box">
+            <p><i class="fas fa-seedling"></i> <strong>Planting:</strong> Space plants 60–90 cm apart in well-draining soil</p>
+            <p><i class="fas fa-tint"></i> <strong>Watering:</strong> Keep soil moist, water at the base — avoid wetting leaves</p>
+            <p><i class="fas fa-sun"></i> <strong>Sunlight:</strong> 6–8 hours of direct sunlight daily</p>
+            <p><i class="fas fa-exclamation-triangle"></i> <strong>Blight:</strong> Remove affected leaves, apply copper-based fungicide every 7 days</p>
+            <p><i class="fas fa-bug"></i> <strong>Pests:</strong> Handpick hornworms or use neem oil spray</p>
+        </div>`;
+    }
+    else if (q.includes('wheat') || q.includes('गेहूं') || q.includes('கோதுமை')) {
+        return `<strong>🌾 Wheat Cultivation:</strong>
+        <div class="info-box">
+            <p><i class="fas fa-calendar"></i> <strong>Sowing Time:</strong> October–December (Rabi season)</p>
+            <p><i class="fas fa-seedling"></i> <strong>Seed Rate:</strong> 100–125 kg per hectare</p>
+            <p><i class="fas fa-tint"></i> <strong>Irrigation:</strong> 4–5 times per season</p>
+            <p><i class="fas fa-flask"></i> <strong>Fertilizer:</strong> 120 kg N, 60 kg P, 40 kg K per hectare</p>
+            <p><i class="fas fa-bug"></i> <strong>Watch for:</strong> Rust, aphids, and termites</p>
+        </div>`;
+    }
+    else if (q.includes('price') || q.includes('भाव') || q.includes('rate') || q.includes('मूल्य') || q.includes('market')) {
+        return `<strong>📊 Current Market Prices (per quintal):</strong>
+        <div class="info-box">
+            <p><i class="fas fa-chart-line"></i> Wheat: ₹2,150–2,250</p>
+            <p><i class="fas fa-chart-line"></i> Maize: ₹1,850–1,950</p>
+            <p><i class="fas fa-chart-line"></i> Paddy: ₹1,940–2,040</p>
+            <p><i class="fas fa-chart-line"></i> Gram: ₹5,200–5,400</p>
+            <p><i class="fas fa-chart-line"></i> Groundnut: ₹5,500–5,700</p>
+            <p><i class="fas fa-chart-line"></i> Onion: ₹800–1,200</p>
+        </div>
+        <span class="translation-note"><i class="fas fa-info-circle"></i> Prices vary by mandi and quality. Check local mandi for exact rates.</span>`;
+    }
+    else if (q.includes('scheme') || q.includes('subsid') || q.includes('सरकार') || q.includes('योजना')) {
+        return `<strong>📋 Key Government Schemes for Farmers:</strong>
+        <div class="info-box">
+            <p><i class="fas fa-file-alt"></i> <strong>PM-KISAN:</strong> ₹6,000/year direct income support</p>
+            <p><i class="fas fa-file-alt"></i> <strong>PM Fasal Bima:</strong> Crop insurance at low premiums</p>
+            <p><i class="fas fa-file-alt"></i> <strong>Kisan Credit Card:</strong> Easy credit up to ₹3 lakh at 4% interest</p>
+            <p><i class="fas fa-file-alt"></i> <strong>Soil Health Card:</strong> Free soil testing and recommendations</p>
+            <p><i class="fas fa-file-alt"></i> <strong>eNAM:</strong> Online national agriculture market platform</p>
+        </div>`;
+    }
+    else if (q.includes('disease') || q.includes('yellow') || q.includes('spot') || q.includes('blight')) {
+        return `<strong>🔍 Plant Disease Advice:</strong>
+        <div class="info-box">
+            <p><i class="fas fa-check-circle"></i> Remove and destroy infected leaves immediately</p>
+            <p><i class="fas fa-check-circle"></i> Apply copper-based fungicide every 7 days</p>
+            <p><i class="fas fa-check-circle"></i> Water at the base — avoid wetting foliage</p>
+            <p><i class="fas fa-check-circle"></i> Ensure good air circulation between plants</p>
+            <p><i class="fas fa-camera"></i> Upload a photo for accurate AI disease detection!</p>
+        </div>`;
+    }
+    else {
+        return `<p>Thank you for your question about "<em>${query.substring(0, 60)}${query.length > 60 ? '…' : ''}</em>".</p>
+        <div class="info-box">
+            <p><i class="fas fa-info-circle"></i> I can help with crop advice, market prices, government schemes, and disease detection.</p>
+            <p><i class="fas fa-camera"></i> Upload photos of affected plants for disease identification.</p>
+            <p><i class="fas fa-language"></i> Ask in any of 22 Indian languages!</p>
+        </div>
+        <span class="translation-note"><i class="fas fa-wifi"></i> Note: Connect your backend at localhost:5000 for full AI responses.</span>`;
     }
 }
 
@@ -384,14 +453,32 @@ function displayChatResponse(data) {
         entityHTML += '</div>';
     }
 
+    const formattedResponse = formatMarkdown(response.replace(/\n/g, '<br>'));
     const html = `
         ${entityHTML}
-        ${response.replace(/\n/g, '<br>')}
+        ${formattedResponse}
         ${detectedLang !== 'en' ? `<span class="translation-note"><i class="fas fa-language"></i> Translated from English to ${langName}</span>` : ''}
     `;
 
-    addMessageToUI(html, 'ai', `FarmBuddy AI — ${intent}`);
+    addMessageToUI(html, 'ai', 'FarmBuddy AI');
     saveMessage(html, 'ai');
+}
+
+// ─── Markdown Formatter ───────────────────────────────────────────────────────
+function formatMarkdown(text) {
+    return text
+        // **bold**
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        // *italic*
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        // `code`
+        .replace(/`(.*?)`/g, '<code>$1</code>')
+        // ### heading
+        .replace(/(^|<br>)#{1,3}\s+(.*?)(?=<br>|$)/g, '$1<strong style="font-size:1.05em;">$2</strong>')
+        // bullet: lines starting with - or •
+        .replace(/(^|<br>)[-•]\s+(.*?)(?=<br>|$)/g, '$1<span style="display:block;padding-left:14px;margin:2px 0;">• $2</span>')
+        // numbered list: 1. 2. etc
+        .replace(/(^|<br>)(\d+\.\s+)(.*?)(?=<br>|$)/g, '$1<span style="display:block;padding-left:14px;margin:2px 0;"><strong>$2</strong>$3</span>');
 }
 
 // ─── Render a message bubble in the new chat UI ───────────────────────────────
@@ -412,7 +499,7 @@ function addMessageToUI(text, sender, senderLabel) {
                 <span class="message-sender">${label}</span>
                 <span class="message-time">${time}</span>
             </div>
-            <div class="message-text">${text}</div>
+            <div class="message-text">${formatMarkdown(text)}</div>
             <div class="message-actions">
                 <button class="action-btn" onclick="copyMsg(this)" title="Copy">
                     <i class="far fa-copy"></i>
@@ -459,17 +546,41 @@ function hideTypingIndicator() {
 }
 
 // ─── Quick Action Buttons ─────────────────────────────────────────────────────
-window.setQuery = async function (type) {
-    const queries = {
-        crop:    'How to grow tomatoes in rainy season?',
-        market:  "What's the price of wheat in Punjab?",
-        schemes: 'What government schemes are available for farmers?',
-        disease: 'My tomato plants have yellow leaves with brown spots.'
+window.setQuery = function (type) {
+    const messages = {
+        crop: `<strong>🌱 Crop Advisory</strong><br><br>
+Ask me anything about growing crops! For example:<br>
+<span style="display:block;padding-left:14px;margin:2px 0;">• How to grow tomatoes in the rainy season?</span>
+<span style="display:block;padding-left:14px;margin:2px 0;">• Best fertilizer for wheat?</span>
+<span style="display:block;padding-left:14px;margin:2px 0;">• When to sow rice in Maharashtra?</span>
+<span style="display:block;padding-left:14px;margin:2px 0;">• How to increase potato yield?</span><br>
+Type your question below in any language!`,
+
+        market: `<strong>📊 Market Prices</strong><br><br>
+Ask me about current crop prices! For example:<br>
+<span style="display:block;padding-left:14px;margin:2px 0;">• What is the price of onion in Maharashtra?</span>
+<span style="display:block;padding-left:14px;margin:2px 0;">• Current wheat rate in Punjab?</span>
+<span style="display:block;padding-left:14px;margin:2px 0;">• Tomato mandi price today?</span>
+<span style="display:block;padding-left:14px;margin:2px 0;">• Rice price in Andhra Pradesh?</span><br>
+Type your question below in any language!`,
+
+        schemes: `<strong>📋 Government Schemes</strong><br><br>
+Ask me about farmer schemes and subsidies! For example:<br>
+<span style="display:block;padding-left:14px;margin:2px 0;">• What schemes are available for small farmers?</span>
+<span style="display:block;padding-left:14px;margin:2px 0;">• How to apply for PM Kisan Yojana?</span>
+<span style="display:block;padding-left:14px;margin:2px 0;">• What is Fasal Bima Yojana?</span>
+<span style="display:block;padding-left:14px;margin:2px 0;">• Subsidies for drip irrigation?</span><br>
+Type your question below in any language!`,
+
+        disease: `<strong>🔍 Disease Detection</strong><br><br>
+Upload a photo of your plant using the <strong>📷 camera button</strong> in the input box below.<br><br>
+I will analyze it and identify any diseases along with treatment recommendations.<br><br>
+<span class="translation-note"><i class="fas fa-info-circle"></i> Supports: Tomato, Potato, Apple, Grape, Corn, Peach, Pepper, Strawberry, and more.</span>`
     };
-    if (!queryInput) return;
-    queryInput.value = queries[type];
-    autoResizeTextarea();
-    await submitQuery();
+
+    if (messages[type]) {
+        addMessageToUI(messages[type], 'ai', 'FarmBuddy AI');
+    }
 };
 
 // ─── Text-to-Speech ───────────────────────────────────────────────────────────

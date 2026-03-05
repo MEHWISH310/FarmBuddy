@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import time
+import re
 from werkzeug.utils import secure_filename
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -48,6 +49,9 @@ def get_available_crops():
             for f in os.listdir(d):
                 if f.endswith('.csv'):
                     crop_name = os.path.splitext(f)[0].lower().replace('_', ' ').replace('-', ' ')
+                    # Skip "cleaned" variants and combined files
+                    if crop_name.startswith('cleaned ') or crop_name.startswith('market prices'):
+                        continue
                     if crop_name not in crops:
                         crops.append(crop_name)
     return crops
@@ -78,28 +82,32 @@ STATIC_CROPS = [
 
 
 def detect_crop(text):
-    """Detect crop from query text. Checks dynamic CSV list first, then static."""
+    """Detect crop from query text using whole-word matching only."""
+    import re
     text_lower = text.lower()
-    
+
     # Get dynamic crops from CSV files
     dynamic_crops = get_available_crops()
     all_crops = dynamic_crops + [c for c in STATIC_CROPS if c not in dynamic_crops]
-    
+
     # Sort by length descending — match longer names first (e.g. "arhar dal" before "arhar")
     all_crops_sorted = sorted(all_crops, key=len, reverse=True)
-    
+
     for crop in all_crops_sorted:
-        if crop in text_lower:
+        # Use word boundary matching — prevents "rice" matching "price"
+        pattern = r'\b' + re.escape(crop) + r'\b'
+        if re.search(pattern, text_lower):
             return crop
     return None
 
 
 def detect_state(text):
-    """Detect Indian state from query text."""
+    """Detect Indian state from query text using whole-word matching."""
     text_lower = text.lower()
     # Sort by length descending to avoid partial matches
     for state in sorted(ALL_STATES, key=len, reverse=True):
-        if state in text_lower:
+        pattern = r'\b' + re.escape(state) + r'\b'
+        if re.search(pattern, text_lower):
             return state
     return None
 
@@ -233,32 +241,57 @@ def chat():
         response = ""
 
         if intent == 'market_price':
-            if detected_crop:
+            if not detected_crop:
+                # Unknown crop (e.g. walnut) — not in database
+                available = get_available_crops()
+                available_str = ', '.join(str(c).title() for c in available[:12])
+                query_words = [w for w in english_query.lower().split()
+                               if w not in ['price', 'of', 'in', 'the', 'what', 'is', 'rate',
+                                            'cost', 'market', 'mandi', 'tell', 'me', 'today', 'current']
+                               and len(w) > 2]
+                unknown_crop = query_words[0].title() if query_words else 'That crop'
+                response  = f"\U0001f615 Sorry, **{unknown_crop}** is not in my database.\n\n"
+                response += f"\U0001f4e6 **Available crops:** {available_str}\n\n"
+                response += f"\U0001f4a1 *Try: 'onion price in Maharashtra' or 'wheat rate in Punjab'*"
+
+            elif detected_crop:
                 if not detected_state:
-                    # No state specified — don't guess, ask user
-                    response  = f"📍 Please specify a state to get accurate prices for **{detected_crop.title()}**.\n\n"
-                    response += f"💡 *Tip: Specify an Indian state for local prices.*\n\n"
+                    # No state specified
+                    response  = f"\U0001f4cd Please specify a state to get accurate prices for **{detected_crop.title()}**.\\n\\n"
+                    response += f"\U0001f4a1 *Tip: Specify an Indian state for local prices.*\\n\\n"
+                    response += f"E.g. *'{detected_crop} price in Maharashtra'* or *'{detected_crop} price in Punjab'*"
                     response += f"E.g. *'{detected_crop} price in Maharashtra'* or *'{detected_crop} price in Punjab'*"
                 else:
                     price_result = price_analyzer.get_crop_price(detected_crop, detected_state)
+                    err = price_result.get('error', '')
 
-                    if 'error' not in price_result:
-                        response  = f"📊 **{detected_crop.title()} Market Price in {detected_state.title()}**\n\n"
+                    if err == 'crop_not_found':
+                        available = price_result.get('available_crops', get_available_crops())
+                        available_str = ', '.join(str(c).title() for c in available[:12])
+                        response  = f"😕 Sorry, **{detected_crop.title()}** is not in my database.\n\n"
+                        response += f"📦 **Available crops:** {available_str}\n\n"
+                        response += f"💡 *Try: 'onion price in Maharashtra' or 'wheat rate in Punjab'*"
+
+                    elif err == 'state_not_found':
+                        available_states = price_result.get('available_states', [])
+                        states_str = ', '.join(str(s).title() for s in available_states[:10])
+                        response  = f"😕 Sorry, **{detected_crop.title()}** data is not available for **{detected_state.title()}**.\n\n"
+                        response += f"🗺️ **States available for {detected_crop.title()}:** {states_str}\n\n"
+                        response += f"💡 *Try: '{detected_crop} price in {available_states[0].title() if available_states else 'Maharashtra'}'*"
+
+                    elif 'error' not in price_result:
+                        response  = f"📊 **{price_result['crop'].title()} Market Price in {price_result['state'].title()}**\n\n"
                         response += f"💰 **Modal Price:** ₹{price_result['modal_price']}/quintal\n"
                         response += f"📉 **Min Price:** ₹{price_result['min_price']}/quintal\n"
                         response += f"📈 **Max Price:** ₹{price_result['max_price']}/quintal\n"
                         response += f"📍 **Market:** {price_result['market']}\n"
-                        response += f"🗺️ **State:** {price_result.get('state', detected_state.title())}\n"
+                        response += f"🗺️ **State:** {price_result['state']}\n"
                         response += f"📅 **Date:** {price_result['date']}\n"
                         if price_result.get('arrival_quantity'):
                             response += f"📦 **Arrival:** {price_result['arrival_quantity']} quintals\n"
+
                     else:
-                        available = get_available_crops()
-                        available_str = ', '.join(c.title() for c in available[:10])
-                        response  = f"😕 Sorry, no price data found for **{detected_crop.title()}** in **{detected_state.title()}**.\n\n"
-                        response += f"This crop or state may not be in my dataset yet.\n\n"
-                        response += f"📦 **Available crops:** {available_str}\n\n"
-                        response += f"Try: *'onion price in Maharashtra'* or *'wheat rate in Punjab'*"
+                        response = f"😕 Could not fetch price data. Please try again with a clearer crop and state name."
 
         elif intent == 'scheme':
             try:

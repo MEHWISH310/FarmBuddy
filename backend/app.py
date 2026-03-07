@@ -35,9 +35,8 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-# ─── Dynamically load available crops from CSV files ──────────────────────────
+# ─── Dynamically load available crops from CSV files ─────────────────────────
 def get_available_crops():
-    """Scan market_data folder and return list of available crop names."""
     crops = []
     search_dirs = [
         MARKET_DATA_DIR,
@@ -49,7 +48,6 @@ def get_available_crops():
             for f in os.listdir(d):
                 if f.endswith('.csv'):
                     crop_name = os.path.splitext(f)[0].lower().replace('_', ' ').replace('-', ' ')
-                    # Skip "cleaned" variants and combined files
                     if crop_name.startswith('cleaned ') or crop_name.startswith('market prices'):
                         continue
                     if crop_name not in crops:
@@ -57,7 +55,7 @@ def get_available_crops():
     return crops
 
 
-# ─── All Indian states + common aliases ───────────────────────────────────────
+# ─── All Indian states ────────────────────────────────────────────────────────
 ALL_STATES = [
     'andhra pradesh', 'arunachal pradesh', 'assam', 'bihar', 'chhattisgarh',
     'goa', 'gujarat', 'haryana', 'himachal pradesh', 'jharkhand', 'karnataka',
@@ -65,36 +63,25 @@ ALL_STATES = [
     'nagaland', 'odisha', 'orissa', 'punjab', 'rajasthan', 'sikkim',
     'tamil nadu', 'telangana', 'tripura', 'uttar pradesh', 'uttarakhand',
     'west bengal', 'delhi', 'jammu', 'kashmir', 'ladakh',
-    # Hindi names
     'पंजाब', 'हरियाणा', 'उत्तर प्रदेश', 'महाराष्ट्र', 'राजस्थान', 'गुजरात',
     'असम', 'बिहार', 'पश्चिम बंगाल',
 ]
 
-# Static crop list covers Hindi names & crops not in CSV filenames
 STATIC_CROPS = [
     'wheat', 'rice', 'onion', 'potato', 'tomato', 'bajra', 'maize', 'corn',
     'cotton', 'sugarcane', 'groundnut', 'soybean', 'mustard', 'barley',
     'sunflower', 'almond', 'arhar', 'arhar dal', 'tur dal', 'chana',
     'jowar', 'ragi', 'millet', 'turmeric', 'ginger', 'garlic', 'chilli',
-    # Hindi
     'बाजरा', 'गेहूं', 'चावल', 'प्याज', 'आलू', 'टमाटर', 'सरसों', 'मक्का',
 ]
 
 
 def detect_crop(text):
-    """Detect crop from query text using whole-word matching only."""
-    import re
     text_lower = text.lower()
-
-    # Get dynamic crops from CSV files
     dynamic_crops = get_available_crops()
     all_crops = dynamic_crops + [c for c in STATIC_CROPS if c not in dynamic_crops]
-
-    # Sort by length descending — match longer names first (e.g. "arhar dal" before "arhar")
     all_crops_sorted = sorted(all_crops, key=len, reverse=True)
-
     for crop in all_crops_sorted:
-        # Use word boundary matching — prevents "rice" matching "price"
         pattern = r'\b' + re.escape(crop) + r'\b'
         if re.search(pattern, text_lower):
             return crop
@@ -102,14 +89,20 @@ def detect_crop(text):
 
 
 def detect_state(text):
-    """Detect Indian state from query text using whole-word matching."""
     text_lower = text.lower()
-    # Sort by length descending to avoid partial matches
     for state in sorted(ALL_STATES, key=len, reverse=True):
         pattern = r'\b' + re.escape(state) + r'\b'
         if re.search(pattern, text_lower):
             return state
     return None
+
+
+# ─── Helper: translate response if needed ────────────────────────────────────
+def maybe_translate(text, target_lang):
+    """Translate text to target_lang if it's not English."""
+    if not target_lang or target_lang == 'en':
+        return text
+    return translator.translate_response(text, target_lang)
 
 
 # ─── Routes ───────────────────────────────────────────────────────────────────
@@ -191,13 +184,20 @@ def search_faqs():
 @app.route('/api/advisory/<crop>', methods=['GET'])
 def get_crop_advisory(crop):
     try:
+        lang = request.args.get('lang', 'en')
         for path in [os.path.join(RAW_DATA_DIR, 'crop_advisory.json'), os.path.join(DATA_DIR, 'crop_advisory.json')]:
             if os.path.exists(path):
                 with open(path, 'r', encoding='utf-8') as f:
                     advisory = json.load(f)
                 result = [a for a in advisory if a.get('crop', '').lower() == crop.lower()]
                 if result:
-                    return jsonify(result[0])
+                    item = result[0]
+                    if lang != 'en':
+                        # Translate advisory fields
+                        for field in ['season', 'soil', 'varieties', 'fertilizer', 'irrigation']:
+                            if field in item:
+                                item[field] = translator.translate_text(item[field], lang)
+                    return jsonify(item)
                 return jsonify({"error": f"No advisory found for {crop}"}), 404
         return jsonify({"error": "Advisory file not found"}), 404
     except Exception as e:
@@ -209,25 +209,33 @@ def chat():
     try:
         data = request.json
         query = data.get('query', '')
+        # Accept explicit language from frontend (the selected UI language)
+        ui_lang = data.get('lang', 'en')
+
         if not query:
             return jsonify({"error": "No query provided"}), 400
 
-        # Translate to English
-        english_query, original_lang = translator.translate_to_english(query)
+        # ── Step 1: Translate query to English ───────────────────────────────
+        english_query, detected_lang = translator.translate_to_english(query)
         combined = english_query.lower() + ' ' + query.lower()
 
-        # ── Intent detection ──────────────────────────────────────────────────
+        # Decide final response language:
+        # If the UI is set to a specific language, use that.
+        # Otherwise fall back to the detected language of the query.
+        response_lang = ui_lang if ui_lang != 'en' else detected_lang
+
+        # ── Step 2: Intent detection ─────────────────────────────────────────
         intent = 'general'
-        if any(w in combined for w in ['price', 'rate', 'cost', 'market', 'mandi', 'bhav', 'भाव', 'दाम']):
+        if any(w in combined for w in ['price', 'rate', 'cost', 'market', 'mandi', 'bhav', 'भाव', 'दाम', 'ਭਾਅ', 'விலை', 'ధర']):
             intent = 'market_price'
-        elif any(w in combined for w in ['scheme', 'yojana', 'subsidy', 'sarkari', 'योजना', 'सब्सिडी']):
+        elif any(w in combined for w in ['scheme', 'yojana', 'subsidy', 'sarkari', 'योजना', 'सब्सिडी', 'ਯੋਜਨਾ', 'திட்டம்']):
             intent = 'scheme'
-        elif any(w in combined for w in ['disease', 'spot', 'yellow', 'brown', 'blight', 'fungus', 'pest', 'रोग', 'कीट']):
+        elif any(w in combined for w in ['disease', 'spot', 'yellow', 'brown', 'blight', 'fungus', 'pest', 'रोग', 'कीट', 'நோய்', 'వ్యాధి']):
             intent = 'disease'
-        elif any(w in combined for w in ['grow', 'plant', 'fertilizer', 'sow', 'harvest', 'advisory', 'खाद', 'बुवाई', 'फसल']):
+        elif any(w in combined for w in ['grow', 'plant', 'fertilizer', 'sow', 'harvest', 'advisory', 'खाद', 'बुवाई', 'फसल', 'ಬೆಳೆ', 'పంట']):
             intent = 'advisory'
 
-        # ── Entity detection (dynamic + comprehensive) ────────────────────────
+        # ── Step 3: Entity detection ─────────────────────────────────────────
         entities = {}
         detected_crop  = detect_crop(combined)
         detected_state = detect_state(combined)
@@ -237,12 +245,11 @@ def chat():
         if detected_state:
             entities['state'] = detected_state
 
-        # ── Response generation ───────────────────────────────────────────────
+        # ── Step 4: Response generation (always in English first) ────────────
         response = ""
 
         if intent == 'market_price':
             if not detected_crop:
-                # Unknown crop (e.g. walnut) — not in database
                 available = get_available_crops()
                 available_str = ', '.join(str(c).title() for c in available[:12])
                 query_words = [w for w in english_query.lower().split()
@@ -250,17 +257,14 @@ def chat():
                                             'cost', 'market', 'mandi', 'tell', 'me', 'today', 'current']
                                and len(w) > 2]
                 unknown_crop = query_words[0].title() if query_words else 'That crop'
-                response  = f"\U0001f615 Sorry, **{unknown_crop}** is not in my database.\n\n"
-                response += f"\U0001f4e6 **Available crops:** {available_str}\n\n"
-                response += f"\U0001f4a1 *Try: 'onion price in Maharashtra' or 'wheat rate in Punjab'*"
+                response  = f"😕 Sorry, **{unknown_crop}** is not in my database.\n\n"
+                response += f"📦 **Available crops:** {available_str}\n\n"
+                response += f"💡 *Try: 'onion price in Maharashtra' or 'wheat rate in Punjab'*"
 
             elif detected_crop:
                 if not detected_state:
-                    # No state specified
-                    response  = f"\U0001f4cd Please specify a state to get accurate prices for **{detected_crop.title()}**.\\n\\n"
-                    response += f"\U0001f4a1 *Tip: Specify an Indian state for local prices.*\\n\\n"
-                    response += f"E.g. *'{detected_crop} price in Maharashtra'* or *'{detected_crop} price in Punjab'*"
-                    response += f"E.g. *'{detected_crop} price in Maharashtra'* or *'{detected_crop} price in Punjab'*"
+                    response  = f"📍 Please specify a state to get accurate prices for **{detected_crop.title()}**.\n\n"
+                    response += f"💡 *Try: '{detected_crop} price in Maharashtra' or '{detected_crop} price in Punjab'*"
                 else:
                     price_result = price_analyzer.get_crop_price(detected_crop, detected_state)
                     err = price_result.get('error', '')
@@ -289,9 +293,8 @@ def chat():
                         response += f"📅 **Date:** {price_result['date']}\n"
                         if price_result.get('arrival_quantity'):
                             response += f"📦 **Arrival:** {price_result['arrival_quantity']} quintals\n"
-
                     else:
-                        response = f"😕 Could not fetch price data. Please try again with a clearer crop and state name."
+                        response = "😕 Could not fetch price data. Please try again with a clearer crop and state name."
 
         elif intent == 'scheme':
             try:
@@ -333,9 +336,9 @@ def chat():
                             if 'irrigation' in crop_advice:
                                 response += f"💧 **Irrigation:** {crop_advice['irrigation']}\n"
                         else:
-                            response = f"Advisory for **{detected_crop.title()}** is coming soon! For now, consult your local Krishi Vigyan Kendra."
+                            response = f"Advisory for **{detected_crop.title()}** is coming soon! Please consult your local Krishi Vigyan Kendra."
                     else:
-                        response = f"Advisory data not found. Please consult your local agricultural officer."
+                        response = "Advisory data not found. Please consult your local agricultural officer."
                 except Exception as e:
                     response = f"Advisory for **{detected_crop.title()}** coming soon!"
             else:
@@ -345,7 +348,7 @@ def chat():
             response = "🔍 **Disease Detection**\n\nPlease upload a photo of your plant using the 📷 camera button in the input box below.\n\nI will analyze it and identify any diseases along with treatment recommendations."
 
         else:
-            if any(w in combined for w in ['hi', 'hello', 'namaste', 'hey', 'नमस्ते']):
+            if any(w in combined for w in ['hi', 'hello', 'namaste', 'hey', 'नमस्ते', 'ਸਤ ਸ੍ਰੀ ਅਕਾਲ', 'வணக்கம்', 'నమస్కారం']):
                 available = get_available_crops()
                 available_str = ', '.join(c.title() for c in available[:8])
                 response  = "👋 **Namaste! I'm FarmBuddy**, your AI farming assistant.\n\n"
@@ -362,13 +365,14 @@ def chat():
                 response += "• **Crop advice:** *'how to grow tomatoes?'*\n"
                 response += "• **Disease detection:** Upload a plant photo using the 📷 button"
 
-        # Translate back if needed
-        if original_lang != 'en':
-            response = translator.translate_text(response, original_lang)
+        # ── Step 5: Translate response to target language ─────────────────────
+        if response_lang and response_lang != 'en':
+            response = translator.translate_response(response, response_lang)
 
         return jsonify({
             'original_query': query,
-            'detected_language': original_lang,
+            'detected_language': detected_lang,
+            'response_language': response_lang,
             'english_query': english_query,
             'intent': intent,
             'entities': entities,
@@ -400,14 +404,36 @@ def predict_disease():
             return jsonify({"error": "Failed to save image"}), 500
 
         result = disease_predictor.predict(temp_path)
+
+        # Translate treatment if language param is passed
+        lang = request.form.get('lang', 'en')
+        if lang != 'en' and 'treatment' in result:
+            result['treatment'] = translator.translate_text(result['treatment'], lang)
+
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/translate', methods=['POST'])
+def translate_text_api():
+    """
+    General-purpose translation endpoint.
+    Used by frontend for fallback response translation.
+    """
+    try:
+        data = request.json
+        text = data.get('text', '')
+        target_lang = data.get('target_lang', 'en')
+        if not text or target_lang == 'en':
+            return jsonify({'translated_text': text})
+        return jsonify({'translated_text': translator.translate_text(text, target_lang)})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/crops', methods=['GET'])
 def get_available_crops_api():
-    """API endpoint to get list of available crops."""
     return jsonify({"crops": get_available_crops()})
 
 
@@ -416,6 +442,7 @@ def health_check():
     return jsonify({
         "status": "ok",
         "message": "FarmBuddy API is running",
+        "supported_languages": list(translator.supported_languages.keys()),
         "available_crops": get_available_crops(),
         "paths": {
             "project_root": PROJECT_ROOT,
@@ -436,30 +463,17 @@ def home():
             "/api/schemes",
             "/api/faqs?lang=hi",
             "/api/predict-disease (POST)",
-            "/api/chat (POST)"
+            "/api/chat (POST) — accepts {query, lang}",
+            "/api/translate (POST) — accepts {text, target_lang}"
         ]
     })
 
 
-@app.route('/api/translate', methods=['POST'])
-def translate_text_api():
-    try:
-        data = request.json
-        text = data.get('text', '')
-        target_lang = data.get('target_lang', 'en')
-        if not text or target_lang == 'en':
-            return jsonify({'translated_text': text})
-        return jsonify({'translated_text': translator.translate_text(text, target_lang)})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
 if __name__ == '__main__':
-    print(f"🚀 FarmBuddy Backend Starting...")
+    print("🚀 FarmBuddy Backend Starting...")
     print(f"📁 Project Root: {PROJECT_ROOT}")
     print(f"📁 Data Directory: {DATA_DIR}")
-    print(f"📁 Raw Data Directory: {RAW_DATA_DIR}")
-    print(f"📁 Upload Directory: {UPLOAD_DIR}")
     print(f"📦 Available crops: {get_available_crops()}")
+    print(f"🌐 Supported languages: {list(translator.supported_languages.keys())}")
     print(f"🌐 Server running on http://127.0.0.1:5000")
     app.run(debug=True, port=5000)

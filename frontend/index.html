@@ -9,6 +9,10 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
+    <!-- Add after Google Fonts - Inter -->
+<!-- Fonts for RTL languages -->
+<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <!-- Google Fonts - Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
@@ -21,7 +25,7 @@
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <!-- Logo -->
+                <!-- Logo — brand name "FarmBuddy" is never translated -->
                 <div class="sidebar-logo">
                     <img src="./image.png" alt="FarmBuddy Logo" width="36" height="36" style="border-radius:8px; object-fit:cover;">
                     <span>FarmBuddy</span>
@@ -34,10 +38,10 @@
                 </button>
             </div>
 
-            <!-- Language Selector -->
+            <!-- Language Selector — populated by JS from INDIAN_LANGUAGES (15 langs) -->
             <div class="language-selector-container">
                 <select class="language-select" id="languageSelect">
-                    <!-- Populated by JS -->
+                    <!-- Populated by script.js -->
                 </select>
             </div>
 
@@ -57,6 +61,7 @@
                         <i class="fas fa-seedling"></i>
                     </div>
                     <div class="user-details">
+                        <!-- Brand name stays "FarmBuddy"; role label is translated -->
                         <span class="user-name">FarmBuddy</span>
                         <span class="user-plan">Farmer Assistant</span>
                     </div>
@@ -78,6 +83,7 @@
                 </button>
                 <div class="mobile-title-group">
                     <img src="./image.png" alt="Logo" width="28" height="28" style="border-radius:6px; object-fit:cover;">
+                    <!-- Brand name never translated -->
                     <h2 class="mobile-title">FarmBuddy AI</h2>
                 </div>
                 <button class="mobile-new-chat" id="mobileNewChat">
@@ -98,7 +104,7 @@
                 <!-- Welcome Message injected by JS via loadInitialData() -->
             </div>
 
-            <!-- Quick Actions -->
+            <!-- Quick Actions — labels translated by JS -->
             <div class="quick-actions-bar" id="quickActions">
                 <button class="quick-action" onclick="setQuery('crop')">
                     <i class="fas fa-seedling"></i>
@@ -147,6 +153,7 @@
                     </div>
                 </div>
 
+                <!-- Disclaimer — translated by JS -->
                 <div class="disclaimer">
                     FarmBuddy AI can make mistakes. Verify important information with experts.
                 </div>
@@ -169,10 +176,13 @@
         </div>
     </div>
 
-    <!-- Response area (hidden, used by old script for rendering cards into messages) -->
+    <!-- Response area (hidden) -->
     <div id="responseArea" style="display:none;"></div>
 
-    <!-- JavaScript -->
+    <!-- ① Load translations FIRST so t() is available to script.js -->
+    <script src="translations.js"></script>
+
+    <!-- ② Main application logic -->
     <script src="script.js"></script>
 </body>
 </html>

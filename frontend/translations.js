@@ -99,9 +99,15 @@ const UI_STRINGS = {
   qaSchemesEx4:       'Soil Health Card — Free soil testing',
 
   qaDiseaseTitle:     'Disease Detection',
-  qaDiseaseBody:      'Upload a clear photo of the affected plant leaf or stem using the 📷 camera button. I will identify the disease and suggest treatment.',
-  qaDiseaseNote:      'Tip: Use a well-lit, close-up photo for best results.',
-};
+  qaDiseaseBody: 'Upload a clear photo or video of the affected plant using the 📷 camera or 🎥 video button. I will identify the disease and suggest treatment.',
+  qaDiseaseNote: 'Tip: Use a well-lit, close-up photo or short video for best results.',
+
+  // ADD THESE:
+  analyzingVideo:     'Analyzing video frames...',
+  videoAnalysisTitle: 'Video Disease Analysis Complete',
+  framesAnalysed:     'Frames analysed',
+  videoUploaded:      'Uploaded video for disease analysis',
+  };
 
 // ─── Batch translate all UI strings for a language ───────────────────────────
 /**
@@ -114,29 +120,28 @@ async function loadUITranslations(lang) {
   if (lang === 'en') return UI_STRINGS;
   if (_translationCache[lang]) return _translationCache[lang];
 
-  // Build batch: translate all values in one pass via Promise.all
   const keys   = Object.keys(UI_STRINGS);
   const values = Object.values(UI_STRINGS);
 
-  // Send in chunks of 20 to avoid overloading the backend
-  const CHUNK = 20;
-  const translated = {};
-
-  for (let i = 0; i < keys.length; i += CHUNK) {
-    const chunkKeys   = keys.slice(i, i + CHUNK);
-    const chunkValues = values.slice(i, i + CHUNK);
-
-    const results = await Promise.all(
-      chunkValues.map(text => translateViaAPI(text, lang))
-    );
-
-    chunkKeys.forEach((key, idx) => {
-      translated[key] = results[idx] || chunkValues[idx];
+  try {
+    const res = await fetch(`${API_BASE_URL}/translate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texts: values, target_lang: lang })
     });
-  }
+    const data = await res.json();
+    const translatedValues = data.translated_texts || values;
 
-  _translationCache[lang] = translated;
-  return translated;
+    const translated = {};
+    keys.forEach((key, idx) => {
+      translated[key] = translatedValues[idx] || values[idx];
+    });
+    _translationCache[lang] = translated;
+    return translated;
+  } catch (_) {
+    // fallback: return English
+    return UI_STRINGS;
+  }
 }
 
 // ─── Translate a single string via /api/translate ────────────────────────────
@@ -151,7 +156,7 @@ async function translateViaAPI(text, targetLang) {
     const data = await res.json();
     return data.translated_text || text;
   } catch (_) {
-    return text; // graceful fallback to English
+    return text;
   }
 }
 

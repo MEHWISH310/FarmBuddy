@@ -60,13 +60,10 @@ document.addEventListener('DOMContentLoaded', async function () {
   renderHistory();
   addAnimationStyles();
   
-  // Set initial direction based on saved language
   setPageDirection(currentLang);
 
-  // Load initial data and apply translations
   await loadInitialData();
   
-  // FORCE APPLY TRANSLATIONS IMMEDIATELY
   console.log('Applying initial translations for:', currentLang);
   await forceApplyAllTranslations(currentLang);
 });
@@ -95,29 +92,22 @@ function initializeElements() {
 async function forceApplyAllTranslations(lang) {
   console.log('FORCE applying translations for:', lang);
   
-  // Load translations if not English
   if (lang !== 'en') {
     await loadUITranslations(lang);
   }
   
-  // Update ALL possible text elements
   await updateAllUIText(lang);
-  
-  // Force update specific elements by ID
   updateElementsById(lang);
   
-  // Update page title
   document.title = `FarmBuddy AI - ${t('farmerAssistant', lang)}`;
   
   console.log('Force translations complete');
 }
 
 async function updateAllUIText(lang) {
-  // 1. Sidebar footer role
   const userPlan = document.querySelector('.user-plan');
   if (userPlan) userPlan.textContent = t('farmerAssistant', lang);
 
-  // 2. Quick action buttons - MULTIPLE SELECTORS
   const quickActionSpans = document.querySelectorAll('.quick-action span');
   const quickActionButtons = document.querySelectorAll('.quick-action');
   const qaKeys = ['cropAdvisory', 'marketPrices', 'govtSchemes', 'diseaseDetection'];
@@ -135,56 +125,38 @@ async function updateAllUIText(lang) {
     }
   });
 
-  // 3. Input placeholder
   if (queryInput) {
     queryInput.placeholder = t('inputPlaceholder', lang);
     console.log('Set placeholder to:', queryInput.placeholder);
   }
 
-  // 4. Disclaimer
   const disclaimer = document.querySelector('.disclaimer');
   if (disclaimer) disclaimer.textContent = t('disclaimer', lang);
 
-  // 5. Loading text
   const loadingP = document.querySelector('.loading-overlay p');
   if (loadingP) loadingP.textContent = t('analyzing', lang);
 
-  // 6. Search placeholder
   if (searchInput) {
     searchInput.placeholder = t('searchPlaceholder', lang);
     console.log('Set search placeholder to:', searchInput.placeholder);
   }
 
-  // 7. Weather local text
   const weatherSpans = document.querySelectorAll('.weather-widget-top span');
   if (weatherSpans.length >= 3) {
     weatherSpans[2].textContent = t('localWeather', lang);
   }
 
-  // 8. New chat button titles
   if (newChatBtn) newChatBtn.title = t('newChat', lang);
   if (mobileNewChat) mobileNewChat.title = t('newChat', lang);
 
-  // 9. Language selector - translate the "translating" text
-  const translatingOption = document.querySelector('option[value="translating"]');
-  // Not needed
-
-  // 10. No conversations text
   const emptyHistory = document.querySelector('.empty-history p');
   if (emptyHistory) emptyHistory.textContent = t('noConversations', lang);
 }
 
 function updateElementsById(lang) {
-  // Update any elements with specific IDs
   const elementsWithText = [
-    'newChatBtn',
-    'mobileNewChat',
-    'voiceBtn',
-    'attachBtn',
-    'videoAttachBtn',
-    'sendBtn'
+    'newChatBtn', 'mobileNewChat', 'voiceBtn', 'attachBtn', 'videoAttachBtn', 'sendBtn'
   ];
-  
   elementsWithText.forEach(id => {
     const el = document.getElementById(id);
     if (el && el.getAttribute('title')) {
@@ -236,7 +208,6 @@ function updateThemeIcon(theme) {
 function setupLanguageSelector() {
   if (!languageSelect) return;
   
-  // Populate dropdown
   languageSelect.innerHTML = '';
   Object.entries(INDIAN_LANGUAGES).forEach(([code, name]) => {
     const opt = document.createElement('option');
@@ -246,7 +217,6 @@ function setupLanguageSelector() {
     languageSelect.appendChild(opt);
   });
 
-  // Remove old listener and add new one
   languageSelect.removeEventListener('change', handleLanguageChange);
   languageSelect.addEventListener('change', handleLanguageChange);
 }
@@ -257,28 +227,21 @@ async function handleLanguageChange(e) {
 
   console.log(`Language changing from ${currentLang} to ${lang}`);
   
-  // Update current language
   currentLang = lang;
   localStorage.setItem('farmbuddy_lang', lang);
 
-  // Set page direction
   setPageDirection(lang);
 
-  // Show notification
   showNotification(t('translating', currentLang), 'info');
 
-  // FORCE APPLY ALL TRANSLATIONS
   await forceApplyAllTranslations(lang);
 
-  // Show completion notification
   const langName = INDIAN_LANGUAGES[lang] || 'English';
   const msg = `${t('languageChanged', currentLang)} ${langName}`;
   showNotification(msg, 'success');
 
-  // Reload FAQs
   await loadFAQs(lang);
 
-  // Refresh welcome message if needed
   const conv = conversations.find(c => c.id === currentConversationId);
   if (conv && conv.messages.length === 0 && messagesContainer) {
     messagesContainer.innerHTML = '';
@@ -520,12 +483,133 @@ async function displayDiseaseResult(data) {
 // ─── Video Upload ─────────────────────────────────────────────────────────────
 function setupVideoUpload() {
   if (!videoUpload) return;
+
   videoUpload.addEventListener('change', async function (e) {
-    if (e.target.files.length > 0) {
-      showNotification(`${t('videoSelected', currentLang)}: ${e.target.files[0].name}`, 'success');
-      showNotification(t('videoComingSoon', currentLang), 'info');
+    if (e.target.files.length === 0) return;
+
+    const file = e.target.files[0];
+    const fileName = file.name;
+    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+
+    // Show video preview chip in imagePreview area
+    if (imagePreview) {
+      imagePreview.innerHTML = `
+        <div class="preview-item video-preview-chip" style="width:auto;height:auto;padding:8px 14px;display:flex;align-items:center;gap:8px;border-radius:12px;">
+          <i class="fas fa-film" style="color:var(--green-primary);font-size:18px;"></i>
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <span style="font-size:13px;font-weight:600;color:var(--text-primary);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${fileName}</span>
+            <span style="font-size:11px;color:var(--text-muted);">${fileSizeMB} MB</span>
+          </div>
+          <button class="remove-preview" onclick="removeVideoPreview()" style="position:static;width:20px;height:20px;">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      `;
     }
+
+    showNotification(`🎥 Video selected: ${fileName}`, 'success');
+
+    // Show a user message bubble so the chat feels responsive
+    addMessageToUI(
+      `<span style="display:flex;align-items:center;gap:8px;"><i class="fas fa-film" style="color:var(--green-primary);"></i> <em>${t('videoUploaded', currentLang)}: ${fileName}</em></span>`,
+      'user', 'You'
+    );
+
+    await analyzeDiseaseVideo(file);
   });
+}
+
+window.removeVideoPreview = function () {
+  if (imagePreview) imagePreview.innerHTML = '';
+  if (videoUpload) videoUpload.value = '';
+};
+
+async function analyzeDiseaseVideo(file) {
+  // Show typing indicator and loading overlay with a custom message
+  showTypingIndicator();
+
+  const loadingP = document.querySelector('.loading-overlay p');
+  if (loadingP) loadingP.textContent = t('analyzingVideo', currentLang);
+  showLoading();
+
+  const formData = new FormData();
+  formData.append('video', file);
+  formData.append('lang', currentLang);
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/predict-disease-video`, {
+      method: 'POST',
+      body: formData
+    });
+
+    const data = await res.json();
+
+    hideTypingIndicator();
+    hideLoading();
+
+    // Restore default loading text
+    const loadingPRestore = document.querySelector('.loading-overlay p');
+    if (loadingPRestore) loadingPRestore.textContent = t('analyzing', currentLang);
+
+    if (data.error) {
+      const errMsg = await maybeTranslate(`Error: ${data.error}`, currentLang);
+      showNotification(errMsg, 'error');
+      return;
+    }
+
+    await displayVideoDiseaseResult(data);
+
+  } catch (err) {
+    hideTypingIndicator();
+    hideLoading();
+    showNotification(t('analysisFailed', currentLang) || 'Video analysis failed. Please try again.', 'error');
+  } finally {
+    // Clean up the preview chip after a delay
+    setTimeout(() => {
+      if (imagePreview) imagePreview.innerHTML = '';
+      if (videoUpload) videoUpload.value = '';
+    }, 4000);
+  }
+}
+
+async function displayVideoDiseaseResult(data) {
+  const disease    = (data.disease || 'Unknown').replace(/_/g, ' ');
+  const confidence = ((data.confidence || 0) * 100).toFixed(2);
+  const frameCount = data.frame_count || 0;
+  const summary    = data.video_summary || '';
+  const langName   = INDIAN_LANGUAGES[currentLang] || 'English';
+
+  const [
+    titleTr, framesLabelTr, diseaseLabelTr, confidenceLabelTr, treatmentLabelTr,
+    diseaseTr, treatmentTr, noteTr
+  ] = await Promise.all([
+    Promise.resolve(t('videoAnalysisTitle', currentLang)),
+    Promise.resolve(t('framesAnalysed', currentLang)),
+    maybeTranslate(t('diseaseLabel', currentLang), currentLang),
+    maybeTranslate(t('confidenceLabel', currentLang), currentLang),
+    maybeTranslate(t('treatmentLabel', currentLang), currentLang),
+    maybeTranslate(disease, currentLang),
+    maybeTranslate(data.treatment || '', currentLang),
+    maybeTranslate(`${t('translatedNote', currentLang)} ${langName}`, currentLang),
+  ]);
+
+  const summaryHtml = summary
+    ? `<p><i class="fas fa-film"></i> <strong>${framesLabelTr}:</strong> ${frameCount} frames — ${summary}</p>`
+    : `<p><i class="fas fa-film"></i> <strong>${framesLabelTr}:</strong> ${frameCount}</p>`;
+
+  const text = `
+    <strong>${titleTr}</strong>
+    <div class="info-box">
+      ${summaryHtml}
+      <p><i class="fas fa-leaf"></i> <strong>${diseaseLabelTr}:</strong> ${diseaseTr}</p>
+      <p><i class="fas fa-chart-line"></i> <strong>${confidenceLabelTr}:</strong> ${confidence}%</p>
+      <p><i class="fas fa-flask"></i> <strong>${treatmentLabelTr}:</strong> ${treatmentTr}</p>
+    </div>
+    ${currentLang !== 'en' ? `<span class="translation-note"><i class="fas fa-language"></i> ${noteTr}</span>` : ''}
+  `;
+
+  addMessageToUI(text, 'ai', 'FarmBuddy AI');
+  saveMessage(text, 'ai');
 }
 
 // ─── Submit Query ─────────────────────────────────────────────────────────────
@@ -651,7 +735,7 @@ async function generateAndDisplayFallback(query) {
     response = `<p>Thank you for your question about "<em>${query.substring(0, 60)}${query.length > 60 ? '…' : ''}</em>".</p>
       <div class="info-box">
         <p><i class="fas fa-info-circle"></i> I can help with crop advice, market prices, government schemes, and disease detection.</p>
-        <p><i class="fas fa-camera"></i> Upload photos of affected plants for disease identification.</p>
+        <p><i class="fas fa-camera"></i> Upload photos or videos of affected plants for disease identification.</p>
       </div>`;
   }
 
@@ -779,7 +863,6 @@ ${t('qaDiseaseBody', lang)}<br><br>
 };
 
 // ─── Text-to-Speech ───────────────────────────────────────────────────────────
-// ─── Text-to-Speech with proper stop functionality ───────────────────────────
 window.textToSpeech = async function (button) {
   const content = button.closest('.message-content');
   if (!content) return;
@@ -790,34 +873,25 @@ window.textToSpeech = async function (button) {
     return;
   }
 
-  // Check if currently speaking and this is the same message
   const isSpeaking = window.speechSynthesis.speaking;
-  const currentUtterance = window.currentUtterance;
-  
-  // If speaking and this is the stop button (icon is 'fa-stop')
   const icon = button.querySelector('i');
   if (isSpeaking && icon.classList.contains('fa-stop')) {
-    // Stop speaking
     window.speechSynthesis.cancel();
     icon.className = 'fas fa-volume-up';
     button.classList.remove('speaking');
     return;
   }
 
-  // Stop any ongoing speech
   window.speechSynthesis.cancel();
 
-  // Create new utterance
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = VOICE_LANG_MAP[currentLang] || 'en-US';
   utterance.rate = 1;
   utterance.pitch = 1;
   utterance.volume = 1;
 
-  // Store current utterance globally
   window.currentUtterance = utterance;
 
-  // Update button to stop icon while speaking
   utterance.onstart = () => {
     icon.className = 'fas fa-stop';
     button.classList.add('speaking');
@@ -835,7 +909,6 @@ window.textToSpeech = async function (button) {
     window.currentUtterance = null;
   };
 
-  // Speak
   window.speechSynthesis.speak(utterance);
 };
 

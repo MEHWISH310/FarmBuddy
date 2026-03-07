@@ -14,13 +14,16 @@ PROJECT_ROOT = os.path.dirname(BACKEND_DIR)
 DATA_DIR = os.path.join(PROJECT_ROOT, 'data')
 RAW_DATA_DIR = os.path.join(DATA_DIR, 'raw_data')
 UPLOAD_DIR = os.path.join(PROJECT_ROOT, 'uploads', 'images')
+VIDEO_UPLOAD_DIR = os.path.join(PROJECT_ROOT, 'uploads', 'videos')
 MARKET_DATA_DIR = os.path.join(DATA_DIR, 'market_data')
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(VIDEO_UPLOAD_DIR, exist_ok=True)
 
 from nlp.translator import LanguageTranslator
 from data_processor.analyze_prices import PriceAnalyzer
 from vision.predict_disease import DiseasePredictor
+from vision.frame_extractor import FrameExtractor
 
 app = Flask(__name__)
 CORS(app, origins="*", supports_credentials=False)
@@ -28,11 +31,16 @@ CORS(app, origins="*", supports_credentials=False)
 translator = LanguageTranslator()
 price_analyzer = PriceAnalyzer()
 disease_predictor = DiseasePredictor()
+frame_extractor = FrameExtractor()
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv', 'webm', '3gp'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def allowed_video_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_VIDEO_EXTENSIONS
 
 
 # ─── Dynamically load available crops from CSV files ─────────────────────────
@@ -97,9 +105,7 @@ def detect_state(text):
     return None
 
 
-# ─── Helper: translate response if needed ────────────────────────────────────
 def maybe_translate(text, target_lang):
-    """Translate text to target_lang if it's not English."""
     if not target_lang or target_lang == 'en':
         return text
     return translator.translate_response(text, target_lang)
@@ -193,7 +199,6 @@ def get_crop_advisory(crop):
                 if result:
                     item = result[0]
                     if lang != 'en':
-                        # Translate advisory fields
                         for field in ['season', 'soil', 'varieties', 'fertilizer', 'irrigation']:
                             if field in item:
                                 item[field] = translator.translate_text(item[field], lang)
@@ -209,22 +214,16 @@ def chat():
     try:
         data = request.json
         query = data.get('query', '')
-        # Accept explicit language from frontend (the selected UI language)
         ui_lang = data.get('lang', 'en')
 
         if not query:
             return jsonify({"error": "No query provided"}), 400
 
-        # ── Step 1: Translate query to English ───────────────────────────────
         english_query, detected_lang = translator.translate_to_english(query)
         combined = english_query.lower() + ' ' + query.lower()
 
-        # Decide final response language:
-        # If the UI is set to a specific language, use that.
-        # Otherwise fall back to the detected language of the query.
         response_lang = ui_lang if ui_lang != 'en' else detected_lang
 
-        # ── Step 2: Intent detection ─────────────────────────────────────────
         intent = 'general'
         if any(w in combined for w in ['price', 'rate', 'cost', 'market', 'mandi', 'bhav', 'भाव', 'दाम', 'ਭਾਅ', 'விலை', 'ధర']):
             intent = 'market_price'
@@ -235,7 +234,6 @@ def chat():
         elif any(w in combined for w in ['grow', 'plant', 'fertilizer', 'sow', 'harvest', 'advisory', 'खाद', 'बुवाई', 'फसल', 'ಬೆಳೆ', 'పంట']):
             intent = 'advisory'
 
-        # ── Step 3: Entity detection ─────────────────────────────────────────
         entities = {}
         detected_crop  = detect_crop(combined)
         detected_state = detect_state(combined)
@@ -245,7 +243,6 @@ def chat():
         if detected_state:
             entities['state'] = detected_state
 
-        # ── Step 4: Response generation (always in English first) ────────────
         response = ""
 
         if intent == 'market_price':
@@ -260,7 +257,6 @@ def chat():
                 response  = f"😕 Sorry, **{unknown_crop}** is not in my database.\n\n"
                 response += f"📦 **Available crops:** {available_str}\n\n"
                 response += f"💡 *Try: 'onion price in Maharashtra' or 'wheat rate in Punjab'*"
-
             elif detected_crop:
                 if not detected_state:
                     response  = f"📍 Please specify a state to get accurate prices for **{detected_crop.title()}**.\n\n"
@@ -268,21 +264,18 @@ def chat():
                 else:
                     price_result = price_analyzer.get_crop_price(detected_crop, detected_state)
                     err = price_result.get('error', '')
-
                     if err == 'crop_not_found':
                         available = price_result.get('available_crops', get_available_crops())
                         available_str = ', '.join(str(c).title() for c in available[:12])
                         response  = f"😕 Sorry, **{detected_crop.title()}** is not in my database.\n\n"
                         response += f"📦 **Available crops:** {available_str}\n\n"
                         response += f"💡 *Try: 'onion price in Maharashtra' or 'wheat rate in Punjab'*"
-
                     elif err == 'state_not_found':
                         available_states = price_result.get('available_states', [])
                         states_str = ', '.join(str(s).title() for s in available_states[:10])
                         response  = f"😕 Sorry, **{detected_crop.title()}** data is not available for **{detected_state.title()}**.\n\n"
                         response += f"🗺️ **States available for {detected_crop.title()}:** {states_str}\n\n"
                         response += f"💡 *Try: '{detected_crop} price in {available_states[0].title() if available_states else 'Maharashtra'}'*"
-
                     elif 'error' not in price_result:
                         response  = f"📊 **{price_result['crop'].title()} Market Price in {price_result['state'].title()}**\n\n"
                         response += f"💰 **Modal Price:** ₹{price_result['modal_price']}/quintal\n"
@@ -345,7 +338,7 @@ def chat():
                 response = "Please specify a crop name for advisory. For example: *'How to grow tomatoes?'* or *'wheat fertilizer advice'*"
 
         elif intent == 'disease':
-            response = "🔍 **Disease Detection**\n\nPlease upload a photo of your plant using the 📷 camera button in the input box below.\n\nI will analyze it and identify any diseases along with treatment recommendations."
+            response = "🔍 **Disease Detection**\n\nPlease upload a photo or video of your plant using the 📷 or 🎥 buttons in the input box below.\n\nI will analyze it and identify any diseases along with treatment recommendations."
 
         else:
             if any(w in combined for w in ['hi', 'hello', 'namaste', 'hey', 'नमस्ते', 'ਸਤ ਸ੍ਰੀ ਅਕਾਲ', 'வணக்கம்', 'నమస్కారం']):
@@ -356,16 +349,15 @@ def chat():
                 response += "• 🌾 **Crop prices** — *'onion price in Assam'*\n"
                 response += "• 📋 **Government schemes** — *'show farmer schemes'*\n"
                 response += "• 🌱 **Farming advice** — *'how to grow wheat?'*\n"
-                response += "• 🔍 **Disease detection** — upload a plant photo\n\n"
+                response += "• 🔍 **Disease detection** — upload a plant photo or video\n\n"
                 response += f"📦 **Available price data for:** {available_str}"
             else:
                 response  = "I'm not sure I understood that. Try asking:\n"
                 response += "• **Market prices:** *'onion price in Maharashtra'*\n"
                 response += "• **Government schemes:** *'show me farmer schemes'*\n"
                 response += "• **Crop advice:** *'how to grow tomatoes?'*\n"
-                response += "• **Disease detection:** Upload a plant photo using the 📷 button"
+                response += "• **Disease detection:** Upload a plant photo or video using the 📷 🎥 buttons"
 
-        # ── Step 5: Translate response to target language ─────────────────────
         if response_lang and response_lang != 'en':
             response = translator.translate_response(response, response_lang)
 
@@ -405,7 +397,6 @@ def predict_disease():
 
         result = disease_predictor.predict(temp_path)
 
-        # Translate treatment if language param is passed
         lang = request.form.get('lang', 'en')
         if lang != 'en' and 'treatment' in result:
             result['treatment'] = translator.translate_text(result['treatment'], lang)
@@ -415,22 +406,68 @@ def predict_disease():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/predict-disease-video', methods=['POST'])
+def predict_disease_video():
+    try:
+        if 'video' not in request.files:
+            return jsonify({"error": "No video uploaded"}), 400
+
+        file = request.files['video']
+
+        if file.filename == '':
+            return jsonify({"error": "No file selected"}), 400
+
+        if not allowed_video_file(file.filename):
+            return jsonify({
+                "error": "File type not allowed. Use mp4, avi, mov, mkv, webm, or 3gp"
+            }), 400
+
+        ext       = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else 'mp4'
+        filename  = f"video_{int(time.time())}.{ext}"
+        temp_path = os.path.join(VIDEO_UPLOAD_DIR, filename)
+        file.save(temp_path)
+
+        if not os.path.exists(temp_path):
+            return jsonify({"error": "Failed to save video"}), 500
+
+        result = disease_predictor.predict_from_video(temp_path, frame_extractor)
+
+        try:
+            os.remove(temp_path)
+        except Exception:
+            pass
+
+        lang = request.form.get('lang', 'en')
+        if lang != 'en' and 'treatment' in result:
+            result['treatment'] = translator.translate_text(result['treatment'], lang)
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/api/translate', methods=['POST'])
 def translate_text_api():
-    """
-    General-purpose translation endpoint.
-    Used by frontend for fallback response translation.
-    """
     try:
         data = request.json
-        text = data.get('text', '')
         target_lang = data.get('target_lang', 'en')
+
+        # Batch mode: { texts: [...], target_lang: 'ta' }
+        if 'texts' in data:
+            texts = data.get('texts', [])
+            if not texts or target_lang == 'en':
+                return jsonify({'translated_texts': texts})
+            results = [translator.translate_text(t, target_lang) for t in texts]
+            return jsonify({'translated_texts': results})
+
+        # Single mode (backward compatible)
+        text = data.get('text', '')
         if not text or target_lang == 'en':
             return jsonify({'translated_text': text})
         return jsonify({'translated_text': translator.translate_text(text, target_lang)})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
 
 @app.route('/api/crops', methods=['GET'])
 def get_available_crops_api():
@@ -447,7 +484,8 @@ def health_check():
         "paths": {
             "project_root": PROJECT_ROOT,
             "data_dir": DATA_DIR,
-            "upload_dir": UPLOAD_DIR
+            "upload_dir": UPLOAD_DIR,
+            "video_upload_dir": VIDEO_UPLOAD_DIR
         }
     })
 
@@ -462,7 +500,8 @@ def home():
             "/api/price?crop=onion&state=assam",
             "/api/schemes",
             "/api/faqs?lang=hi",
-            "/api/predict-disease (POST)",
+            "/api/predict-disease (POST) — image upload",
+            "/api/predict-disease-video (POST) — video upload",
             "/api/chat (POST) — accepts {query, lang}",
             "/api/translate (POST) — accepts {text, target_lang}"
         ]

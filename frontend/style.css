@@ -999,3 +999,15 @@ body {
 [dir="rtl"] .loading-icons {
     flex-direction: row-reverse;
 }
+/* Speaking state for action buttons */
+.action-btn.speaking {
+  background: var(--green-primary);
+  color: white;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}

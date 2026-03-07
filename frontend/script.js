@@ -779,6 +779,7 @@ ${t('qaDiseaseBody', lang)}<br><br>
 };
 
 // ─── Text-to-Speech ───────────────────────────────────────────────────────────
+// ─── Text-to-Speech with proper stop functionality ───────────────────────────
 window.textToSpeech = async function (button) {
   const content = button.closest('.message-content');
   if (!content) return;
@@ -789,17 +790,52 @@ window.textToSpeech = async function (button) {
     return;
   }
 
+  // Check if currently speaking and this is the same message
+  const isSpeaking = window.speechSynthesis.speaking;
+  const currentUtterance = window.currentUtterance;
+  
+  // If speaking and this is the stop button (icon is 'fa-stop')
+  const icon = button.querySelector('i');
+  if (isSpeaking && icon.classList.contains('fa-stop')) {
+    // Stop speaking
+    window.speechSynthesis.cancel();
+    icon.className = 'fas fa-volume-up';
+    button.classList.remove('speaking');
+    return;
+  }
+
+  // Stop any ongoing speech
   window.speechSynthesis.cancel();
+
+  // Create new utterance
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang    = VOICE_LANG_MAP[currentLang] || 'en-US';
-  utterance.rate    = 1;
-  utterance.pitch   = 1;
-  utterance.volume  = 1;
+  utterance.lang = VOICE_LANG_MAP[currentLang] || 'en-US';
+  utterance.rate = 1;
+  utterance.pitch = 1;
+  utterance.volume = 1;
 
-  utterance.onstart = () => { button.querySelector('i').className = 'fas fa-stop'; };
-  utterance.onend   = () => { button.querySelector('i').className = 'fas fa-volume-up'; };
-  utterance.onerror = () => { button.querySelector('i').className = 'fas fa-volume-up'; };
+  // Store current utterance globally
+  window.currentUtterance = utterance;
 
+  // Update button to stop icon while speaking
+  utterance.onstart = () => {
+    icon.className = 'fas fa-stop';
+    button.classList.add('speaking');
+  };
+
+  utterance.onend = () => {
+    icon.className = 'fas fa-volume-up';
+    button.classList.remove('speaking');
+    window.currentUtterance = null;
+  };
+
+  utterance.onerror = () => {
+    icon.className = 'fas fa-volume-up';
+    button.classList.remove('speaking');
+    window.currentUtterance = null;
+  };
+
+  // Speak
   window.speechSynthesis.speak(utterance);
 };
 

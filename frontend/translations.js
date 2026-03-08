@@ -14,108 +14,113 @@ const _translationCache = {};
 // ─── All English UI strings (source of truth) ────────────────────────────────
 const UI_STRINGS = {
   // Sidebar / header
-  farmerAssistant:    'Farmer Assistant',
-  newChat:            'New chat',
-  searchPlaceholder:  'Search conversations...',
-  noConversations:    'No conversations yet',
-  deleteConfirm:      'Delete this conversation?',
-  localWeather:       'Local Weather',
+  farmerAssistant:      'Farmer Assistant',
+  newChat:              'New chat',
+  searchPlaceholder:    'Search conversations...',
+  noConversations:      'No conversations yet',
+  deleteConfirm:        'Delete this conversation?',
+  localWeather:         'Local Weather',
 
   // Quick actions
-  cropAdvisory:       'Crop Advisory',
-  marketPrices:       'Market Prices',
-  govtSchemes:        'Govt Schemes',
-  diseaseDetection:   'Disease Detection',
+  cropAdvisory:         'Crop Advisory',
+  marketPrices:         'Market Prices',
+  govtSchemes:          'Govt Schemes',
+  diseaseDetection:     'Disease Detection',
 
   // Input area
-  inputPlaceholder:   'Ask your farming question in any language...',
-  disclaimer:         'FarmBuddy AI can make mistakes. Verify important information with experts.',
+  inputPlaceholder:     'Ask your farming question or describe plant symptoms in any language...',
+  disclaimer:           'FarmBuddy AI can make mistakes. Verify important information with experts.',
 
   // Loading
-  analyzing:          'Analyzing your query...',
+  analyzing:            'Analyzing your query...',
+  analyzingVideo:       'Analyzing video frames...',
 
   // Theme
-  darkMode:           'Dark mode enabled',
-  lightMode:          'Light mode enabled',
+  darkMode:             'Dark mode enabled',
+  lightMode:            'Light mode enabled',
 
   // Language switch
-  languageChanged:    'Language changed to',
+  languageChanged:      'Language changed to',
+  translating:          'Translating...',
 
   // Notifications
-  copied:             'Copied to clipboard!',
-  copyFailed:         'Could not copy text',
-  bookmarkSaved:      'Bookmarked!',
-  bookmarkRemoved:    'Bookmark removed',
-  voiceCaptured:      'Voice captured!',
-  voiceError:         'Voice input error. Try again.',
-  ttsNotSupported:    'Text-to-speech not supported in this browser',
-  enterQuestion:      'Please enter a question',
-  backendOffline:     'Server offline. Showing cached response.',
-  analysisFailed:     'Analysis failed. Please try again.',
-  imageSelected:      'image(s) selected',
-  videoSelected:      'Video selected',
-  videoComingSoon:    'Video analysis coming soon!',
-  translating:        'Translating...',
+  copied:               'Copied to clipboard!',
+  copyFailed:           'Could not copy text',
+  bookmarkSaved:        'Bookmarked!',
+  bookmarkRemoved:      'Bookmark removed',
+  voiceCaptured:        'Voice captured!',
+  voiceListening:       'Listening… speak now',
+  voiceError:           'Voice input error. Try again.',
+  ttsNotSupported:      'Text-to-speech not supported in this browser',
+  enterQuestion:        'Please enter a question or describe symptoms',
+  backendOffline:       'Server offline. Showing cached response.',
+  analysisFailed:       'Analysis failed. Please try again.',
+  imageSelected:        'image(s) selected',
+  videoSelected:        'Video selected',
 
-  // Disease result
-  diseaseIdentified:  '🔍 Disease Analysis Result',
-  diseaseLabel:       'Disease',
-  confidenceLabel:    'Confidence',
-  treatmentLabel:     'Treatment',
-  translatedNote:     'Translated to',
-  translatedFrom:     'Detected language:',
+  // Disease result — image / video
+  diseaseIdentified:    '🔍 Disease Analysis Result',
+  diseaseLabel:         'Disease',
+  confidenceLabel:      'Confidence',
+  treatmentLabel:       'Treatment',
+  translatedNote:       'Translated to',
+  translatedFrom:       'Detected language:',
+  videoAnalysisTitle:   '🎥 Video Disease Analysis',
+  framesAnalysed:       'Frames analysed',
+  videoUploaded:        'Uploaded video for disease analysis',
+
+  // Disease detection — text / voice
+  textDiseaseTitle:     '🔍 Disease Identified from Description',
+  textDiseaseNoMatch:   'Could not identify disease from description. Please add more symptom details or upload a photo.',
+  textDiseasePrompt:    'Describe plant symptoms to identify disease — or upload a photo/video below',
 
   // Welcome message
-  welcomeTitle:       'Welcome to FarmBuddy AI!',
-  welcomeSubtitle:    'Your intelligent farming assistant. How can I help you today?',
-  welcomeItem1:       'Crop prices — ask for any crop price by state',
-  welcomeItem2:       'Market trends — get price trends and analysis',
-  welcomeItem3:       'Government schemes — explore farmer welfare schemes',
-  welcomeItem4:       'Disease detection — upload a plant photo for diagnosis',
-  welcomeItem5:       'Multi-language support — ask in any Indian language',
-  welcomeQuestion:    'What would you like to know today?',
+  welcomeTitle:         'Welcome to FarmBuddy AI!',
+  welcomeSubtitle:      'Your intelligent farming assistant. How can I help you today?',
+  welcomeItem1:         'Crop prices — ask for any crop price by state',
+  welcomeItem2:         'Market trends — get price trends and analysis',
+  welcomeItem3:         'Government schemes — explore farmer welfare schemes',
+  welcomeItem4:         'Disease detection — describe symptoms or upload a plant photo/video',
+  welcomeItem5:         'Multi-language support — ask in any Indian language',
+  welcomeQuestion:      'What would you like to know today?',
 
-  // Quick action responses
-  qaCropTitle:        'Crop Advisory',
-  qaCropIntro:        'I can help with growing advice for all crops. Try asking:',
-  qaCropEx1:          'How to grow tomatoes?',
-  qaCropEx2:          'Wheat fertilizer recommendation',
-  qaCropEx3:          'Best season for rice cultivation',
-  qaCropEx4:          'Onion farming tips',
-  qaTypeBelow:        'Type your crop question below ⬇️',
+  // Quick action responses — crop
+  qaCropTitle:          'Crop Advisory',
+  qaCropIntro:          'I can help with growing advice for all crops. Try asking:',
+  qaCropEx1:            'How to grow tomatoes?',
+  qaCropEx2:            'Wheat fertilizer recommendation',
+  qaCropEx3:            'Best season for rice cultivation',
+  qaCropEx4:            'Onion farming tips',
+  qaTypeBelow:          'Type your question below ⬇️',
 
-  qaMarketTitle:      'Market Prices',
-  qaMarketIntro:      'I can fetch live market prices. Try asking:',
-  qaMarketEx1:        'Onion price in Maharashtra',
-  qaMarketEx2:        'Wheat rate in Punjab',
-  qaMarketEx3:        'Tomato price in Karnataka',
-  qaMarketEx4:        'Rice price in West Bengal',
+  // Quick action responses — market
+  qaMarketTitle:        'Market Prices',
+  qaMarketIntro:        'I can fetch live market prices. Try asking:',
+  qaMarketEx1:          'Onion price in Maharashtra',
+  qaMarketEx2:          'Wheat rate in Punjab',
+  qaMarketEx3:          'Tomato price in Karnataka',
+  qaMarketEx4:          'Rice price in West Bengal',
 
-  qaSchemesTitle:     'Government Schemes',
-  qaSchemesIntro:     'Available farmer welfare schemes:',
-  qaSchemesEx1:       'PM-KISAN — ₹6,000/year direct income support',
-  qaSchemesEx2:       'PM Fasal Bima — Crop insurance at low premiums',
-  qaSchemesEx3:       'Kisan Credit Card — Easy credit up to ₹3 lakh at 4%',
-  qaSchemesEx4:       'Soil Health Card — Free soil testing',
+  // Quick action responses — schemes
+  qaSchemesTitle:       'Government Schemes',
+  qaSchemesIntro:       'Available farmer welfare schemes:',
+  qaSchemesEx1:         'PM-KISAN — ₹6,000/year direct income support',
+  qaSchemesEx2:         'PM Fasal Bima — Crop insurance at low premiums',
+  qaSchemesEx3:         'Kisan Credit Card — Easy credit up to ₹3 lakh at 4%',
+  qaSchemesEx4:         'Soil Health Card — Free soil testing',
 
-  qaDiseaseTitle:     'Disease Detection',
-  qaDiseaseBody: 'Upload a clear photo or video of the affected plant using the 📷 camera or 🎥 video button. I will identify the disease and suggest treatment.',
-  qaDiseaseNote: 'Tip: Use a well-lit, close-up photo or short video for best results.',
-
-  // ADD THESE:
-  analyzingVideo:     'Analyzing video frames...',
-  videoAnalysisTitle: 'Video Disease Analysis Complete',
-  framesAnalysed:     'Frames analysed',
-  videoUploaded:      'Uploaded video for disease analysis',
-  };
+  // Quick action responses — disease (updated with text/voice options)
+  qaDiseaseTitle:       'Disease Detection',
+  qaDiseaseTextPrompt:  'You can detect plant diseases in two ways:',
+  qaDiseaseTextWay:     '📝 Text / Voice',
+  qaDiseaseTextDesc:    'Describe symptoms, e.g. "tomato leaves have brown spots with yellow rings"',
+  qaDiseaseImageWay:    '📷 Photo / Video',
+  qaDiseaseImageDesc:   'Upload a clear photo or video using the camera/video buttons below',
+  qaDiseaseBody:        'Upload a clear photo or video of the affected plant, or describe the symptoms in text.',
+  qaDiseaseNote:        'Tip: Mention the crop name + symptoms for best text-based results.',
+};
 
 // ─── Batch translate all UI strings for a language ───────────────────────────
-/**
- * Fetches translations for all UI_STRINGS keys for the given language.
- * Results are cached so switching back is instant.
- * @param {string} lang  — language code e.g. 'hi', 'ta'
- * @returns {Promise<Object>} — { key: translatedText, ... }
- */
 async function loadUITranslations(lang) {
   if (lang === 'en') return UI_STRINGS;
   if (_translationCache[lang]) return _translationCache[lang];
@@ -125,9 +130,9 @@ async function loadUITranslations(lang) {
 
   try {
     const res = await fetch(`${API_BASE_URL}/translate`, {
-      method: 'POST',
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ texts: values, target_lang: lang })
+      body:    JSON.stringify({ texts: values, target_lang: lang })
     });
     const data = await res.json();
     const translatedValues = data.translated_texts || values;
@@ -139,8 +144,7 @@ async function loadUITranslations(lang) {
     _translationCache[lang] = translated;
     return translated;
   } catch (_) {
-    // fallback: return English
-    return UI_STRINGS;
+    return UI_STRINGS;  // fallback: English
   }
 }
 
@@ -149,9 +153,9 @@ async function translateViaAPI(text, targetLang) {
   if (!text || targetLang === 'en') return text;
   try {
     const res = await fetch(`${API_BASE_URL}/translate`, {
-      method: 'POST',
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, target_lang: targetLang })
+      body:    JSON.stringify({ text, target_lang: targetLang })
     });
     const data = await res.json();
     return data.translated_text || text;
@@ -161,29 +165,20 @@ async function translateViaAPI(text, targetLang) {
 }
 
 // ─── Get a single UI string (sync, from cache or English fallback) ────────────
-/**
- * t(key, lang) — returns translated string from cache.
- * If cache not loaded yet, returns English fallback.
- * Always call loadUITranslations(lang) before calling t() for non-English.
- */
 function t(key, lang) {
   if (!lang || lang === 'en') return UI_STRINGS[key] || key;
   const cache = _translationCache[lang];
   if (cache && cache[key]) return cache[key];
-  return UI_STRINGS[key] || key; // fallback to English
+  return UI_STRINGS[key] || key;
 }
 
 // ─── Translate any arbitrary text dynamically ────────────────────────────────
-/**
- * translateText(text, lang) — translates any string to the target language.
- * Use for AI responses, notifications, dynamic content.
- */
 async function translateText(text, lang) {
   if (!lang || lang === 'en' || !text) return text;
   return await translateViaAPI(text, lang);
 }
 
-// ─── Pre-warm cache for a language (call on dropdown change) ─────────────────
+// ─── Pre-warm cache for a language ───────────────────────────────────────────
 async function warmTranslationCache(lang) {
   if (lang === 'en' || _translationCache[lang]) return;
   await loadUITranslations(lang);

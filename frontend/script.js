@@ -1,5 +1,6 @@
 /**
- * FarmBuddy AI — script.js (Fixed Translation Edition)
+ * FarmBuddy AI — script.js
+ * Updated: text/voice disease detection with full multilingual support
  */
 
 // API_BASE_URL comes from translations.js (global)
@@ -49,8 +50,6 @@ let currentConversationId = getOrCreateConversation();
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async function () {
-  console.log('DOM Content Loaded - Initializing...');
-  
   initializeElements();
   initializeTheme();
   setupLanguageSelector();
@@ -59,12 +58,8 @@ document.addEventListener('DOMContentLoaded', async function () {
   loadCurrentConversation();
   renderHistory();
   addAnimationStyles();
-  
   setPageDirection(currentLang);
-
   await loadInitialData();
-  
-  console.log('Applying initial translations for:', currentLang);
   await forceApplyAllTranslations(currentLang);
 });
 
@@ -88,47 +83,30 @@ function initializeElements() {
   historyList       = document.getElementById('historyList');
 }
 
-// ─── FORCE APPLY ALL TRANSLATIONS ────────────────────────────────────────────
+// ─── Force apply all translations ─────────────────────────────────────────────
 async function forceApplyAllTranslations(lang) {
-  console.log('FORCE applying translations for:', lang);
-  
-  if (lang !== 'en') {
-    await loadUITranslations(lang);
-  }
-  
+  if (lang !== 'en') await loadUITranslations(lang);
   await updateAllUIText(lang);
   updateElementsById(lang);
-  
   document.title = `FarmBuddy AI - ${t('farmerAssistant', lang)}`;
-  
-  console.log('Force translations complete');
 }
 
 async function updateAllUIText(lang) {
   const userPlan = document.querySelector('.user-plan');
   if (userPlan) userPlan.textContent = t('farmerAssistant', lang);
 
-  const quickActionSpans = document.querySelectorAll('.quick-action span');
+  const quickActionSpans   = document.querySelectorAll('.quick-action span');
   const quickActionButtons = document.querySelectorAll('.quick-action');
   const qaKeys = ['cropAdvisory', 'marketPrices', 'govtSchemes', 'diseaseDetection'];
-  
-  quickActionSpans.forEach((span, index) => {
-    if (qaKeys[index]) {
-      span.textContent = t(qaKeys[index], lang);
-      console.log(`Set quick action ${index} to:`, span.textContent);
-    }
+  quickActionSpans.forEach((span, i) => {
+    if (qaKeys[i]) span.textContent = t(qaKeys[i], lang);
   });
-  
-  quickActionButtons.forEach((btn, index) => {
-    if (qaKeys[index]) {
-      btn.setAttribute('title', t(qaKeys[index], lang));
-    }
+  quickActionButtons.forEach((btn, i) => {
+    if (qaKeys[i]) btn.setAttribute('title', t(qaKeys[i], lang));
   });
 
-  if (queryInput) {
-    queryInput.placeholder = t('inputPlaceholder', lang);
-    console.log('Set placeholder to:', queryInput.placeholder);
-  }
+  if (queryInput)  queryInput.placeholder  = t('inputPlaceholder', lang);
+  if (searchInput) searchInput.placeholder = t('searchPlaceholder', lang);
 
   const disclaimer = document.querySelector('.disclaimer');
   if (disclaimer) disclaimer.textContent = t('disclaimer', lang);
@@ -136,17 +114,10 @@ async function updateAllUIText(lang) {
   const loadingP = document.querySelector('.loading-overlay p');
   if (loadingP) loadingP.textContent = t('analyzing', lang);
 
-  if (searchInput) {
-    searchInput.placeholder = t('searchPlaceholder', lang);
-    console.log('Set search placeholder to:', searchInput.placeholder);
-  }
-
   const weatherSpans = document.querySelectorAll('.weather-widget-top span');
-  if (weatherSpans.length >= 3) {
-    weatherSpans[2].textContent = t('localWeather', lang);
-  }
+  if (weatherSpans.length >= 3) weatherSpans[2].textContent = t('localWeather', lang);
 
-  if (newChatBtn) newChatBtn.title = t('newChat', lang);
+  if (newChatBtn)   newChatBtn.title   = t('newChat', lang);
   if (mobileNewChat) mobileNewChat.title = t('newChat', lang);
 
   const emptyHistory = document.querySelector('.empty-history p');
@@ -154,29 +125,27 @@ async function updateAllUIText(lang) {
 }
 
 function updateElementsById(lang) {
-  const elementsWithText = [
-    'newChatBtn', 'mobileNewChat', 'voiceBtn', 'attachBtn', 'videoAttachBtn', 'sendBtn'
-  ];
-  elementsWithText.forEach(id => {
-    const el = document.getElementById(id);
-    if (el && el.getAttribute('title')) {
-      el.setAttribute('title', t(id.replace('Btn', '').toLowerCase() + 'Title', lang) || el.getAttribute('title'));
-    }
-  });
+  ['newChatBtn','mobileNewChat','voiceBtn','attachBtn','videoAttachBtn','sendBtn']
+    .forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.getAttribute('title')) {
+        el.setAttribute('title',
+          t(id.replace('Btn','').toLowerCase() + 'Title', lang) || el.getAttribute('title'));
+      }
+    });
 }
 
-// ─── Page Direction ────────────────────────────────────────────────────────────
+// ─── Page direction ───────────────────────────────────────────────────────────
 function setPageDirection(lang) {
   const dir = RTL_LANGUAGES.includes(lang) ? 'rtl' : 'ltr';
   document.documentElement.setAttribute('dir', dir);
   document.documentElement.setAttribute('lang', lang);
-  
   if (lang === 'ur') {
-    document.body.style.fontFamily = "'Noto Nastaliq Urdu', 'Inter', sans-serif";
+    document.body.style.fontFamily = "'Noto Nastaliq Urdu','Inter',sans-serif";
   } else if (lang === 'ks') {
-    document.body.style.fontFamily = "'Noto Sans Arabic', 'Inter', sans-serif";
+    document.body.style.fontFamily = "'Noto Sans Arabic','Inter',sans-serif";
   } else {
-    document.body.style.fontFamily = "'Inter', sans-serif";
+    document.body.style.fontFamily = "'Inter',sans-serif";
   }
 }
 
@@ -194,8 +163,7 @@ async function toggleTheme() {
   document.documentElement.setAttribute('data-theme', next);
   localStorage.setItem('theme', next);
   updateThemeIcon(next);
-  const msg = next === 'dark' ? t('darkMode', currentLang) : t('lightMode', currentLang);
-  showNotification(msg, 'info');
+  showNotification(next === 'dark' ? t('darkMode', currentLang) : t('lightMode', currentLang), 'info');
 }
 
 function updateThemeIcon(theme) {
@@ -204,10 +172,9 @@ function updateThemeIcon(theme) {
   if (icon) icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
 }
 
-// ─── Language Selector ────────────────────────────────────────────────────────
+// ─── Language selector ────────────────────────────────────────────────────────
 function setupLanguageSelector() {
   if (!languageSelect) return;
-  
   languageSelect.innerHTML = '';
   Object.entries(INDIAN_LANGUAGES).forEach(([code, name]) => {
     const opt = document.createElement('option');
@@ -216,7 +183,6 @@ function setupLanguageSelector() {
     if (code === currentLang) opt.selected = true;
     languageSelect.appendChild(opt);
   });
-
   languageSelect.removeEventListener('change', handleLanguageChange);
   languageSelect.addEventListener('change', handleLanguageChange);
 }
@@ -224,24 +190,14 @@ function setupLanguageSelector() {
 async function handleLanguageChange(e) {
   const lang = e.target.value;
   if (lang === currentLang) return;
-
-  console.log(`Language changing from ${currentLang} to ${lang}`);
-  
   currentLang = lang;
   localStorage.setItem('farmbuddy_lang', lang);
-
   setPageDirection(lang);
-
   showNotification(t('translating', currentLang), 'info');
-
   await forceApplyAllTranslations(lang);
-
   const langName = INDIAN_LANGUAGES[lang] || 'English';
-  const msg = `${t('languageChanged', currentLang)} ${langName}`;
-  showNotification(msg, 'success');
-
+  showNotification(`${t('languageChanged', currentLang)} ${langName}`, 'success');
   await loadFAQs(lang);
-
   const conv = conversations.find(c => c.id === currentConversationId);
   if (conv && conv.messages.length === 0 && messagesContainer) {
     messagesContainer.innerHTML = '';
@@ -249,7 +205,6 @@ async function handleLanguageChange(e) {
   }
 }
 
-// ─── Helper: translate if non-English ────────────────────────────────────────
 async function maybeTranslate(text, lang) {
   const target = lang || currentLang;
   if (!target || target === 'en' || !text) return text;
@@ -262,7 +217,7 @@ async function loadFAQs(lang = 'en') {
     const res = await fetch(`${API_BASE_URL}/faqs?lang=${lang}`);
     const faqs = await res.json();
     if (!faqs.error) window.currentFAQs = faqs;
-  } catch (_) { /* silent */ }
+  } catch (_) {}
 }
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
@@ -272,12 +227,9 @@ function setupSidebar() {
   if (newChatBtn)      newChatBtn.addEventListener('click', newChat);
   if (mobileNewChat)   mobileNewChat.addEventListener('click', newChat);
   if (searchInput)     searchInput.addEventListener('input', filterHistory);
-
   document.addEventListener('click', function (e) {
-    if (window.innerWidth <= 768 &&
-        sidebar && sidebar.classList.contains('open') &&
-        !sidebar.contains(e.target) &&
-        menuBtn && !menuBtn.contains(e.target)) {
+    if (window.innerWidth <= 768 && sidebar && sidebar.classList.contains('open') &&
+        !sidebar.contains(e.target) && menuBtn && !menuBtn.contains(e.target)) {
       toggleSidebar();
     }
   });
@@ -287,26 +239,19 @@ function toggleSidebar() {
   if (sidebar) sidebar.classList.toggle('open');
 }
 
-// ─── Event Listeners ──────────────────────────────────────────────────────────
+// ─── Event listeners ──────────────────────────────────────────────────────────
 function setupEventListeners() {
   if (sendBtn) sendBtn.addEventListener('click', submitQuery);
-
   if (queryInput) {
     queryInput.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        submitQuery();
-      }
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitQuery(); }
     });
     queryInput.addEventListener('input', autoResizeTextarea);
   }
-
   const attachBtn = document.getElementById('attachBtn');
   if (attachBtn) attachBtn.addEventListener('click', () => imageUpload && imageUpload.click());
-
   const videoAttachBtn = document.getElementById('videoAttachBtn');
   if (videoAttachBtn) videoAttachBtn.addEventListener('click', () => videoUpload && videoUpload.click());
-
   setupVoiceInput();
   setupImageUpload();
   setupVideoUpload();
@@ -318,13 +263,9 @@ function autoResizeTextarea() {
   queryInput.style.height = Math.min(queryInput.scrollHeight, 200) + 'px';
 }
 
-// ─── Voice Input ──────────────────────────────────────────────────────────────
+// ─── Voice input ──────────────────────────────────────────────────────────────
 let _recognition = null;
 let _isRecording = false;
-
-function updateVoiceLanguage(lang) {
-  if (_recognition) _recognition.lang = VOICE_LANG_MAP[lang] || 'en-US';
-}
 
 function setupVoiceInput() {
   if (!voiceBtn) return;
@@ -332,19 +273,15 @@ function setupVoiceInput() {
     voiceBtn.style.display = 'none';
     return;
   }
-
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   _recognition = new SpeechRecognition();
-  _recognition.continuous = false;
-  _recognition.interimResults = true;
-  _recognition.lang = VOICE_LANG_MAP[currentLang] || 'en-US';
+  _recognition.continuous      = false;
+  _recognition.interimResults  = true;
+  _recognition.lang            = VOICE_LANG_MAP[currentLang] || 'en-US';
 
   _recognition.onresult = (event) => {
     const transcript = Array.from(event.results).map(r => r[0].transcript).join('');
-    if (queryInput) {
-      queryInput.value = transcript;
-      autoResizeTextarea();
-    }
+    if (queryInput) { queryInput.value = transcript; autoResizeTextarea(); }
   };
 
   _recognition.onend = async () => {
@@ -353,7 +290,7 @@ function setupVoiceInput() {
     voiceBtn.querySelector('i').className = 'fas fa-microphone';
     if (queryInput && queryInput.value.trim()) {
       showNotification(t('voiceCaptured', currentLang), 'success');
-      submitQuery();
+      submitQuery();    // ← voice query goes through the same submitQuery → /api/chat flow
     }
   };
 
@@ -373,18 +310,17 @@ function setupVoiceInput() {
       _isRecording = true;
       voiceBtn.style.color = 'var(--green-primary)';
       voiceBtn.querySelector('i').className = 'fas fa-stop';
+      showNotification(t('voiceListening', currentLang) || 'Listening…', 'info');
     }
   });
 }
 
-// ─── Image Upload ─────────────────────────────────────────────────────────────
+// ─── Image upload ─────────────────────────────────────────────────────────────
 function setupImageUpload() {
   if (!imageUpload || !imagePreview) return;
-
   imageUpload.addEventListener('change', async function (e) {
     imagePreview.innerHTML = '';
     if (e.target.files.length === 0) return;
-
     Array.from(e.target.files).forEach((file, index) => {
       const reader = new FileReader();
       reader.onload = function (ev) {
@@ -394,25 +330,19 @@ function setupImageUpload() {
           <img src="${ev.target.result}" alt="Preview">
           <button class="remove-preview" onclick="removePreview(${index})">
             <i class="fas fa-times"></i>
-          </button>
-        `;
+          </button>`;
         imagePreview.appendChild(item);
       };
       reader.readAsDataURL(file);
     });
-
-    const msg = `${e.target.files.length} ${t('imageSelected', currentLang)}`;
-    showNotification(msg, 'success');
-
-    if (e.target.files.length >= 1) {
-      await analyzeDiseaseImage(e.target.files[0]);
-    }
+    showNotification(`${e.target.files.length} ${t('imageSelected', currentLang)}`, 'success');
+    if (e.target.files.length >= 1) await analyzeDiseaseImage(e.target.files[0]);
   });
 }
 
 window.removePreview = function () {
   if (imagePreview) imagePreview.innerHTML = '';
-  if (imageUpload) imageUpload.value = '';
+  if (imageUpload)  imageUpload.value = '';
 };
 
 async function analyzeDiseaseImage(file) {
@@ -420,22 +350,14 @@ async function analyzeDiseaseImage(file) {
   const formData = new FormData();
   formData.append('image', file);
   formData.append('lang', currentLang);
-
   try {
-    const res = await fetch(`${API_BASE_URL}/predict-disease`, {
-      method: 'POST',
-      body: formData
-    });
+    const res  = await fetch(`${API_BASE_URL}/predict-disease`, { method:'POST', body:formData });
     const data = await res.json();
-
     if (data.error) {
-      const errMsg = await maybeTranslate(`Error: ${data.error}`, currentLang);
-      showNotification(errMsg, 'error');
-      hideLoading();
-      return;
+      showNotification(await maybeTranslate(`Error: ${data.error}`, currentLang), 'error');
+      hideLoading(); return;
     }
-
-    await displayDiseaseResult(data);
+    await displayDiseaseResult(data, 'image');
   } catch (_) {
     showNotification(t('analysisFailed', currentLang), 'error');
   } finally {
@@ -443,32 +365,70 @@ async function analyzeDiseaseImage(file) {
   }
 }
 
-async function displayDiseaseResult(data) {
-  const disease    = data.disease.replace(/_/g, ' ');
-  const confidence = (data.confidence * 100).toFixed(2);
+// ─── Disease result display — shared by image, video AND text/voice ───────────
+/**
+ * displayDiseaseResult(data, source)
+ *   source: 'image' | 'video' | 'text'
+ *
+ * For text/voice the backend already returns a fully-formatted, translated
+ * Markdown response string in data.response (via /api/chat).
+ * For image/video results come from /api/predict-disease[-video] with raw fields.
+ */
+async function displayDiseaseResult(data, source = 'image') {
+
+  // ── Text / voice: response already formatted + translated by backend ─────
+  if (source === 'text') {
+    const formattedResponse = formatMarkdown(data.response.replace(/\n/g, '<br>'));
+    addMessageToUI(formattedResponse, 'ai', 'FarmBuddy AI');
+    saveMessage(formattedResponse, 'ai');
+    return;
+  }
+
+  // ── Image or video: build rich HTML card ──────────────────────────────────
+  const disease    = (data.disease || 'Unknown').replace(/_/g, ' ');
+  const confidence = ((data.confidence || 0) * 100).toFixed(2);
   const langName   = INDIAN_LANGUAGES[currentLang] || 'English';
 
+  // Labels translated in parallel
   const [
     titleTr, diseaseLabelTr, confidenceLabelTr, treatmentLabelTr,
     diseaseTr, treatmentTr, noteTr
   ] = await Promise.all([
-    maybeTranslate(t('diseaseIdentified', currentLang), currentLang),
-    maybeTranslate(t('diseaseLabel', currentLang), currentLang),
-    maybeTranslate(t('confidenceLabel', currentLang), currentLang),
-    maybeTranslate(t('treatmentLabel', currentLang), currentLang),
-    maybeTranslate(disease, currentLang),
+    maybeTranslate(
+      source === 'video'
+        ? t('videoAnalysisTitle', currentLang)
+        : t('diseaseIdentified', currentLang),
+      currentLang
+    ),
+    maybeTranslate(t('diseaseLabel',     currentLang), currentLang),
+    maybeTranslate(t('confidenceLabel',  currentLang), currentLang),
+    maybeTranslate(t('treatmentLabel',   currentLang), currentLang),
+    maybeTranslate(disease,              currentLang),
     maybeTranslate(data.treatment || '', currentLang),
     maybeTranslate(`${t('translatedNote', currentLang)} ${langName}`, currentLang),
   ]);
 
+  let extraHtml = '';
+  if (source === 'video') {
+    const frameCount = data.frame_count || 0;
+    const summary    = data.video_summary || '';
+    const framesLbl  = await maybeTranslate(t('framesAnalysed', currentLang), currentLang);
+    extraHtml = summary
+      ? `<p><i class="fas fa-film"></i> <strong>${framesLbl}:</strong> ${frameCount} frames — ${summary}</p>`
+      : `<p><i class="fas fa-film"></i> <strong>${framesLbl}:</strong> ${frameCount}</p>`;
+  }
+
   const text = `
     <strong>${titleTr}</strong>
     <div class="info-box">
+      ${extraHtml}
       <p><i class="fas fa-leaf"></i> <strong>${diseaseLabelTr}:</strong> ${diseaseTr}</p>
       <p><i class="fas fa-chart-line"></i> <strong>${confidenceLabelTr}:</strong> ${confidence}%</p>
       <p><i class="fas fa-flask"></i> <strong>${treatmentLabelTr}:</strong> ${treatmentTr}</p>
     </div>
-    ${currentLang !== 'en' ? `<span class="translation-note"><i class="fas fa-language"></i> ${noteTr}</span>` : ''}
+    ${currentLang !== 'en'
+      ? `<span class="translation-note"><i class="fas fa-language"></i> ${noteTr}</span>`
+      : ''}
   `;
 
   addMessageToUI(text, 'ai', 'FarmBuddy AI');
@@ -476,58 +436,57 @@ async function displayDiseaseResult(data) {
 
   setTimeout(() => {
     if (imagePreview) imagePreview.innerHTML = '';
-    if (imageUpload) imageUpload.value = '';
+    if (imageUpload)  imageUpload.value = '';
   }, 3000);
 }
 
-// ─── Video Upload ─────────────────────────────────────────────────────────────
+// ─── Video upload ─────────────────────────────────────────────────────────────
 function setupVideoUpload() {
   if (!videoUpload) return;
-
   videoUpload.addEventListener('change', async function (e) {
     if (e.target.files.length === 0) return;
-
-    const file = e.target.files[0];
-    const fileName = file.name;
+    const file       = e.target.files[0];
+    const fileName   = file.name;
     const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
 
-    // Show video preview chip in imagePreview area
     if (imagePreview) {
       imagePreview.innerHTML = `
-        <div class="preview-item video-preview-chip" style="width:auto;height:auto;padding:8px 14px;display:flex;align-items:center;gap:8px;border-radius:12px;">
+        <div class="preview-item video-preview-chip"
+             style="width:auto;height:auto;padding:8px 14px;display:flex;
+                    align-items:center;gap:8px;border-radius:12px;">
           <i class="fas fa-film" style="color:var(--green-primary);font-size:18px;"></i>
           <div style="display:flex;flex-direction:column;gap:2px;">
-            <span style="font-size:13px;font-weight:600;color:var(--text-primary);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${fileName}</span>
+            <span style="font-size:13px;font-weight:600;color:var(--text-primary);
+                         max-width:160px;overflow:hidden;text-overflow:ellipsis;
+                         white-space:nowrap;">${fileName}</span>
             <span style="font-size:11px;color:var(--text-muted);">${fileSizeMB} MB</span>
           </div>
-          <button class="remove-preview" onclick="removeVideoPreview()" style="position:static;width:20px;height:20px;">
+          <button class="remove-preview" onclick="removeVideoPreview()"
+                  style="position:static;width:20px;height:20px;">
             <i class="fas fa-times"></i>
           </button>
-        </div>
-      `;
+        </div>`;
     }
 
     showNotification(`🎥 Video selected: ${fileName}`, 'success');
-
-    // Show a user message bubble so the chat feels responsive
     addMessageToUI(
-      `<span style="display:flex;align-items:center;gap:8px;"><i class="fas fa-film" style="color:var(--green-primary);"></i> <em>${t('videoUploaded', currentLang)}: ${fileName}</em></span>`,
+      `<span style="display:flex;align-items:center;gap:8px;">
+         <i class="fas fa-film" style="color:var(--green-primary);"></i>
+         <em>${t('videoUploaded', currentLang)}: ${fileName}</em>
+       </span>`,
       'user', 'You'
     );
-
     await analyzeDiseaseVideo(file);
   });
 }
 
 window.removeVideoPreview = function () {
   if (imagePreview) imagePreview.innerHTML = '';
-  if (videoUpload) videoUpload.value = '';
+  if (videoUpload)  videoUpload.value = '';
 };
 
 async function analyzeDiseaseVideo(file) {
-  // Show typing indicator and loading overlay with a custom message
   showTypingIndicator();
-
   const loadingP = document.querySelector('.loading-overlay p');
   if (loadingP) loadingP.textContent = t('analyzingVideo', currentLang);
   showLoading();
@@ -537,89 +496,34 @@ async function analyzeDiseaseVideo(file) {
   formData.append('lang', currentLang);
 
   try {
-    const res = await fetch(`${API_BASE_URL}/predict-disease-video`, {
-      method: 'POST',
-      body: formData
-    });
-
+    const res  = await fetch(`${API_BASE_URL}/predict-disease-video`, { method:'POST', body:formData });
     const data = await res.json();
-
     hideTypingIndicator();
     hideLoading();
-
-    // Restore default loading text
-    const loadingPRestore = document.querySelector('.loading-overlay p');
-    if (loadingPRestore) loadingPRestore.textContent = t('analyzing', currentLang);
-
+    const loadingPR = document.querySelector('.loading-overlay p');
+    if (loadingPR) loadingPR.textContent = t('analyzing', currentLang);
     if (data.error) {
-      const errMsg = await maybeTranslate(`Error: ${data.error}`, currentLang);
-      showNotification(errMsg, 'error');
+      showNotification(await maybeTranslate(`Error: ${data.error}`, currentLang), 'error');
       return;
     }
-
-    await displayVideoDiseaseResult(data);
-
+    await displayDiseaseResult(data, 'video');
   } catch (err) {
     hideTypingIndicator();
     hideLoading();
-    showNotification(t('analysisFailed', currentLang) || 'Video analysis failed. Please try again.', 'error');
+    showNotification(t('analysisFailed', currentLang) || 'Video analysis failed.', 'error');
   } finally {
-    // Clean up the preview chip after a delay
     setTimeout(() => {
       if (imagePreview) imagePreview.innerHTML = '';
-      if (videoUpload) videoUpload.value = '';
+      if (videoUpload)  videoUpload.value = '';
     }, 4000);
   }
 }
 
-async function displayVideoDiseaseResult(data) {
-  const disease    = (data.disease || 'Unknown').replace(/_/g, ' ');
-  const confidence = ((data.confidence || 0) * 100).toFixed(2);
-  const frameCount = data.frame_count || 0;
-  const summary    = data.video_summary || '';
-  const langName   = INDIAN_LANGUAGES[currentLang] || 'English';
-
-  const [
-    titleTr, framesLabelTr, diseaseLabelTr, confidenceLabelTr, treatmentLabelTr,
-    diseaseTr, treatmentTr, noteTr
-  ] = await Promise.all([
-    Promise.resolve(t('videoAnalysisTitle', currentLang)),
-    Promise.resolve(t('framesAnalysed', currentLang)),
-    maybeTranslate(t('diseaseLabel', currentLang), currentLang),
-    maybeTranslate(t('confidenceLabel', currentLang), currentLang),
-    maybeTranslate(t('treatmentLabel', currentLang), currentLang),
-    maybeTranslate(disease, currentLang),
-    maybeTranslate(data.treatment || '', currentLang),
-    maybeTranslate(`${t('translatedNote', currentLang)} ${langName}`, currentLang),
-  ]);
-
-  const summaryHtml = summary
-    ? `<p><i class="fas fa-film"></i> <strong>${framesLabelTr}:</strong> ${frameCount} frames — ${summary}</p>`
-    : `<p><i class="fas fa-film"></i> <strong>${framesLabelTr}:</strong> ${frameCount}</p>`;
-
-  const text = `
-    <strong>${titleTr}</strong>
-    <div class="info-box">
-      ${summaryHtml}
-      <p><i class="fas fa-leaf"></i> <strong>${diseaseLabelTr}:</strong> ${diseaseTr}</p>
-      <p><i class="fas fa-chart-line"></i> <strong>${confidenceLabelTr}:</strong> ${confidence}%</p>
-      <p><i class="fas fa-flask"></i> <strong>${treatmentLabelTr}:</strong> ${treatmentTr}</p>
-    </div>
-    ${currentLang !== 'en' ? `<span class="translation-note"><i class="fas fa-language"></i> ${noteTr}</span>` : ''}
-  `;
-
-  addMessageToUI(text, 'ai', 'FarmBuddy AI');
-  saveMessage(text, 'ai');
-}
-
-// ─── Submit Query ─────────────────────────────────────────────────────────────
+// ─── Submit query (text + voice) ──────────────────────────────────────────────
 async function submitQuery() {
   if (!queryInput) return;
   const query = queryInput.value.trim();
-  if (!query) {
-    showNotification(t('enterQuestion', currentLang), 'warning');
-    return;
-  }
+  if (!query) { showNotification(t('enterQuestion', currentLang), 'warning'); return; }
 
   addMessageToUI(query, 'user', 'You');
   saveMessage(query, 'user');
@@ -631,22 +535,23 @@ async function submitQuery() {
   showLoading();
 
   try {
-    const res = await fetch(`${API_BASE_URL}/chat`, {
-      method: 'POST',
+    const res  = await fetch(`${API_BASE_URL}/chat`, {
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, lang: currentLang })
+      body:    JSON.stringify({ query, lang: currentLang })
     });
     const data = await res.json();
-
     hideTypingIndicator();
     hideLoading();
 
-    if (data.error) {
-      showNotification(`Error: ${data.error}`, 'error');
-      return;
-    }
+    if (data.error) { showNotification(`Error: ${data.error}`, 'error'); return; }
 
-    await displayChatResponse(data);
+    // ── Route disease responses to the shared disease display ─────────────
+    if (data.intent === 'disease') {
+      await displayDiseaseResult(data, 'text');
+    } else {
+      await displayChatResponse(data);
+    }
 
   } catch (_) {
     hideTypingIndicator();
@@ -656,10 +561,9 @@ async function submitQuery() {
   }
 }
 
-// ─── Display Chat Response ────────────────────────────────────────────────────
+// ─── Display chat response (non-disease) ──────────────────────────────────────
 async function displayChatResponse(data) {
   let response = data.response || '';
-
   if (currentLang !== 'en' && data.response_language === 'en') {
     response = await translateText(response, currentLang);
   }
@@ -674,7 +578,10 @@ async function displayChatResponse(data) {
       if (value) {
         const vals = Array.isArray(value) ? value : [value];
         vals.forEach(val => {
-          entityHTML += `<span style="background:var(--green-dim);color:var(--green-primary);padding:4px 12px;border-radius:20px;font-size:0.8rem;">${key}: ${val}</span>`;
+          entityHTML += `<span style="background:var(--green-dim);color:var(--green-primary);
+                                     padding:4px 12px;border-radius:20px;font-size:0.8rem;">
+                           ${key}: ${val}
+                         </span>`;
         });
       }
     }
@@ -683,18 +590,21 @@ async function displayChatResponse(data) {
 
   let detectedNote = '';
   if (detectedLang !== 'en') {
-    const noteText = await maybeTranslate(`${t('translatedFrom', currentLang)} ${langName}`, currentLang);
-    detectedNote = `<span class="translation-note"><i class="fas fa-language"></i> ${noteText}</span>`;
+    const noteText = await maybeTranslate(
+      `${t('translatedFrom', currentLang)} ${langName}`, currentLang
+    );
+    detectedNote = `<span class="translation-note">
+                      <i class="fas fa-language"></i> ${noteText}
+                    </span>`;
   }
 
   const formattedResponse = formatMarkdown(response.replace(/\n/g, '<br>'));
   const html = `${entityHTML}${formattedResponse}${detectedNote}`;
-
   addMessageToUI(html, 'ai', 'FarmBuddy AI');
   saveMessage(html, 'ai');
 }
 
-// ─── Fallback Response ──────────────────────────────────────────────────────
+// ─── Fallback response (server offline) ──────────────────────────────────────
 async function generateAndDisplayFallback(query) {
   const q = query.toLowerCase();
   let response = '';
@@ -702,75 +612,75 @@ async function generateAndDisplayFallback(query) {
   if (q.includes('tomato') || q.includes('टमाटर') || q.includes('தக்காளி')) {
     response = `<strong>🍅 Growing Tomatoes:</strong>
       <div class="info-box">
-        <p><i class="fas fa-seedling"></i> <strong>Planting:</strong> Space plants 60–90 cm apart in well-draining soil</p>
+        <p><i class="fas fa-seedling"></i> <strong>Planting:</strong> Space plants 60–90 cm apart</p>
         <p><i class="fas fa-tint"></i> <strong>Watering:</strong> Keep soil moist, water at the base</p>
-        <p><i class="fas fa-sun"></i> <strong>Sunlight:</strong> 6–8 hours of direct sunlight daily</p>
-        <p><i class="fas fa-exclamation-triangle"></i> <strong>Blight:</strong> Apply copper-based fungicide every 7 days</p>
+        <p><i class="fas fa-sun"></i> <strong>Sunlight:</strong> 6–8 hours daily</p>
+        <p><i class="fas fa-exclamation-triangle"></i> <strong>Blight:</strong> Apply copper-based fungicide</p>
         <p><i class="fas fa-bug"></i> <strong>Pests:</strong> Use neem oil spray</p>
       </div>`;
   } else if (q.includes('wheat') || q.includes('गेहूं') || q.includes('ਕਣਕ')) {
     response = `<strong>🌾 Wheat Cultivation:</strong>
       <div class="info-box">
-        <p><i class="fas fa-calendar"></i> <strong>Sowing Time:</strong> October–December (Rabi season)</p>
-        <p><i class="fas fa-seedling"></i> <strong>Seed Rate:</strong> 100–125 kg per hectare</p>
+        <p><i class="fas fa-calendar"></i> <strong>Sowing:</strong> October–December (Rabi)</p>
+        <p><i class="fas fa-seedling"></i> <strong>Seed Rate:</strong> 100–125 kg/hectare</p>
         <p><i class="fas fa-tint"></i> <strong>Irrigation:</strong> 4–5 times per season</p>
-        <p><i class="fas fa-flask"></i> <strong>Fertilizer:</strong> 120 kg N, 60 kg P, 40 kg K per hectare</p>
+        <p><i class="fas fa-flask"></i> <strong>Fertilizer:</strong> 120 N, 60 P, 40 K kg/ha</p>
       </div>`;
   } else if (q.includes('price') || q.includes('भाव') || q.includes('rate') || q.includes('market')) {
-    response = `<strong>📊 Current Market Prices (per quintal):</strong>
+    response = `<strong>📊 Market Prices (per quintal):</strong>
       <div class="info-box">
         <p><i class="fas fa-chart-line"></i> Wheat: ₹2,150–2,250</p>
         <p><i class="fas fa-chart-line"></i> Maize: ₹1,850–1,950</p>
         <p><i class="fas fa-chart-line"></i> Paddy: ₹1,940–2,040</p>
         <p><i class="fas fa-chart-line"></i> Onion: ₹800–1,200</p>
       </div>`;
-  } else if (q.includes('scheme') || q.includes('योजना') || q.includes('subsid')) {
-    response = `<strong>📋 Key Government Schemes:</strong>
+  } else if (q.includes('disease') || q.includes('रोग') || q.includes('spot') ||
+             q.includes('yellow') || q.includes('blight')) {
+    response = `<strong>🔍 Disease Detection (Offline Mode):</strong>
       <div class="info-box">
-        <p><i class="fas fa-file-alt"></i> <strong>PM-KISAN:</strong> ₹6,000/year direct income support</p>
-        <p><i class="fas fa-file-alt"></i> <strong>PM Fasal Bima:</strong> Crop insurance at low premiums</p>
-        <p><i class="fas fa-file-alt"></i> <strong>Kisan Credit Card:</strong> Easy credit up to ₹3 lakh at 4%</p>
+        <p><i class="fas fa-info-circle"></i> Server is offline. For disease detection:</p>
+        <p><i class="fas fa-camera"></i> Upload a plant photo when back online</p>
+        <p><i class="fas fa-pencil-alt"></i> Or describe symptoms — e.g. "tomato yellow spots"</p>
       </div>`;
   } else {
     response = `<p>Thank you for your question about "<em>${query.substring(0, 60)}${query.length > 60 ? '…' : ''}</em>".</p>
       <div class="info-box">
         <p><i class="fas fa-info-circle"></i> I can help with crop advice, market prices, government schemes, and disease detection.</p>
-        <p><i class="fas fa-camera"></i> Upload photos or videos of affected plants for disease identification.</p>
+        <p><i class="fas fa-camera"></i> Upload photos or videos for disease identification.</p>
       </div>`;
   }
 
   if (currentLang !== 'en') {
     const plainText = response.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-    const translated = await translateText(plainText, currentLang);
-    response = `<p>${translated}</p>`;
+    response = `<p>${await translateText(plainText, currentLang)}</p>`;
   }
 
   addMessageToUI(response, 'ai', 'FarmBuddy AI');
   saveMessage(response, 'ai');
 }
 
-// ─── Markdown Formatter ───────────────────────────────────────────────────────
+// ─── Markdown formatter ───────────────────────────────────────────────────────
 function formatMarkdown(text) {
   return text
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/`(.*?)`/g, '<code>$1</code>')
-    .replace(/(^|<br>)#{1,3}\s+(.*?)(?=<br>|$)/g, '$1<strong style="font-size:1.05em;">$2</strong>')
-    .replace(/(^|<br>)[-•]\s+(.*?)(?=<br>|$)/g, '$1<span style="display:block;padding-left:14px;margin:2px 0;">• $2</span>')
-    .replace(/(^|<br>)(\d+\.\s+)(.*?)(?=<br>|$)/g, '$1<span style="display:block;padding-left:14px;margin:2px 0;"><strong>$2</strong>$3</span>');
+    .replace(/\*(.*?)\*/g,     '<em>$1</em>')
+    .replace(/`(.*?)`/g,       '<code>$1</code>')
+    .replace(/(^|<br>)#{1,3}\s+(.*?)(?=<br>|$)/g,
+             '$1<strong style="font-size:1.05em;">$2</strong>')
+    .replace(/(^|<br>)[-•]\s+(.*?)(?=<br>|$)/g,
+             '$1<span style="display:block;padding-left:14px;margin:2px 0;">• $2</span>')
+    .replace(/(^|<br>)(\d+\.\s+)(.*?)(?=<br>|$)/g,
+             '$1<span style="display:block;padding-left:14px;margin:2px 0;"><strong>$2</strong>$3</span>');
 }
 
-// ─── Render a message bubble ──────────────────────────────────────────────────
+// ─── Message bubble ───────────────────────────────────────────────────────────
 function addMessageToUI(text, sender, senderLabel) {
   if (!messagesContainer) return;
-
-  const div = document.createElement('div');
+  const div    = document.createElement('div');
   div.className = `message ${sender}`;
-
-  const time   = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const time   = new Date().toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
   const avatar = sender === 'user' ? 'fa-user' : 'fa-robot';
   const label  = senderLabel || (sender === 'user' ? 'You' : 'FarmBuddy AI');
-
   div.innerHTML = `
     <div class="message-avatar"><i class="fas ${avatar}"></i></div>
     <div class="message-content">
@@ -794,14 +704,12 @@ function addMessageToUI(text, sender, senderLabel) {
           <i class="fas fa-share-alt"></i>
         </button>` : ''}
       </div>
-    </div>
-  `;
-
+    </div>`;
   messagesContainer.appendChild(div);
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// ─── Typing Indicator ─────────────────────────────────────────────────────────
+// ─── Typing indicator ─────────────────────────────────────────────────────────
 function showTypingIndicator() {
   if (!messagesContainer) return;
   const div = document.createElement('div');
@@ -811,8 +719,7 @@ function showTypingIndicator() {
     <div class="message-avatar"><i class="fas fa-robot"></i></div>
     <div class="message-content">
       <div class="typing-indicator"><span></span><span></span><span></span></div>
-    </div>
-  `;
+    </div>`;
   messagesContainer.appendChild(div);
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
@@ -822,10 +729,9 @@ function hideTypingIndicator() {
   if (el) el.remove();
 }
 
-// ─── Quick Action Buttons ─────────────────────────────────────────────────────
+// ─── Quick action buttons ─────────────────────────────────────────────────────
 window.setQuery = async function (type) {
   const lang = currentLang;
-
   const templates = {
     crop: () => `<strong>🌱 ${t('qaCropTitle', lang)}</strong><br><br>
 ${t('qaCropIntro', lang)}<br>
@@ -851,28 +757,36 @@ ${t('qaSchemesIntro', lang)}<br>
 <span style="display:block;padding-left:14px;margin:2px 0;">• ${t('qaSchemesEx4', lang)}</span><br>
 ${t('qaTypeBelow', lang)}`,
 
+    // Disease quick-action: now shows text input prompt + upload option
     disease: () => `<strong>🔍 ${t('qaDiseaseTitle', lang)}</strong><br><br>
-${t('qaDiseaseBody', lang)}<br><br>
-<span class="translation-note"><i class="fas fa-info-circle"></i> ${t('qaDiseaseNote', lang)}</span>`,
+${t('qaDiseaseTextPrompt', lang) ||
+  'You can detect plant diseases in <strong>two ways</strong>:'}<br><br>
+<span style="display:block;padding-left:14px;margin:2px 0;">
+  📝 <strong>${t('qaDiseaseTextWay', lang) || 'Text/Voice'}</strong> — 
+  ${t('qaDiseaseTextDesc', lang) || 'Describe symptoms, e.g. "tomato leaves have brown spots with yellow rings"'}
+</span>
+<span style="display:block;padding-left:14px;margin:2px 0;">
+  📷 <strong>${t('qaDiseaseImageWay', lang) || 'Photo/Video'}</strong> — 
+  ${t('qaDiseaseImageDesc', lang) || 'Upload a clear photo or video using the camera/video buttons below'}
+</span><br>
+<span class="translation-note">
+  <i class="fas fa-info-circle"></i> 
+  ${t('qaDiseaseNote', lang)}
+</span>`,
   };
 
   if (!templates[type]) return;
-
-  const message = templates[type]();
-  addMessageToUI(message, 'ai', 'FarmBuddy AI');
+  addMessageToUI(templates[type](), 'ai', 'FarmBuddy AI');
 };
 
-// ─── Text-to-Speech ───────────────────────────────────────────────────────────
+// ─── Text-to-speech ───────────────────────────────────────────────────────────
 window.textToSpeech = async function (button) {
   const content = button.closest('.message-content');
   if (!content) return;
   const text = content.querySelector('.message-text').innerText;
-
   if (!('speechSynthesis' in window)) {
-    showNotification(t('ttsNotSupported', currentLang), 'error');
-    return;
+    showNotification(t('ttsNotSupported', currentLang), 'error'); return;
   }
-
   const isSpeaking = window.speechSynthesis.speaking;
   const icon = button.querySelector('i');
   if (isSpeaking && icon.classList.contains('fa-stop')) {
@@ -881,34 +795,13 @@ window.textToSpeech = async function (button) {
     button.classList.remove('speaking');
     return;
   }
-
   window.speechSynthesis.cancel();
-
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = VOICE_LANG_MAP[currentLang] || 'en-US';
-  utterance.rate = 1;
-  utterance.pitch = 1;
-  utterance.volume = 1;
-
-  window.currentUtterance = utterance;
-
-  utterance.onstart = () => {
-    icon.className = 'fas fa-stop';
-    button.classList.add('speaking');
-  };
-
-  utterance.onend = () => {
-    icon.className = 'fas fa-volume-up';
-    button.classList.remove('speaking');
-    window.currentUtterance = null;
-  };
-
-  utterance.onerror = () => {
-    icon.className = 'fas fa-volume-up';
-    button.classList.remove('speaking');
-    window.currentUtterance = null;
-  };
-
+  utterance.lang   = VOICE_LANG_MAP[currentLang] || 'en-US';
+  utterance.rate   = 1;
+  utterance.onstart = () => { icon.className = 'fas fa-stop'; button.classList.add('speaking'); };
+  utterance.onend   = () => { icon.className = 'fas fa-volume-up'; button.classList.remove('speaking'); };
+  utterance.onerror = () => { icon.className = 'fas fa-volume-up'; button.classList.remove('speaking'); };
   window.speechSynthesis.speak(utterance);
 };
 
@@ -927,11 +820,8 @@ window.copyMsg = async function (button) {
 window.shareResponse = async function (button) {
   const text = button.closest('.message-content').querySelector('.message-text').innerText;
   if (navigator.share) {
-    navigator.share({ title: 'FarmBuddy', text, url: window.location.href })
-      .catch(async () => {
-        await navigator.clipboard.writeText(text);
-        showNotification(t('copied', currentLang), 'success');
-      });
+    navigator.share({ title:'FarmBuddy', text, url:window.location.href })
+      .catch(async () => { await navigator.clipboard.writeText(text); showNotification(t('copied', currentLang), 'success'); });
   } else {
     await navigator.clipboard.writeText(text);
     showNotification(t('copied', currentLang), 'success');
@@ -943,18 +833,13 @@ window.bookmarkResponse = async function (button) {
   const icon    = button.querySelector('i');
   const content = button.closest('.message-content');
   if (!icon || !content) return;
-
   icon.classList.toggle('far');
   icon.classList.toggle('fas');
-
   if (icon.classList.contains('fas')) {
     let bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
-    bookmarks.push({
-      id: Date.now(),
-      title: 'FarmBuddy AI',
-      content: content.querySelector('.message-text').innerHTML,
-      timestamp: new Date().toISOString()
-    });
+    bookmarks.push({ id:Date.now(), title:'FarmBuddy AI',
+                     content:content.querySelector('.message-text').innerHTML,
+                     timestamp:new Date().toISOString() });
     if (bookmarks.length > 20) bookmarks = bookmarks.slice(-20);
     localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
     showNotification(t('bookmarkSaved', currentLang), 'success');
@@ -971,35 +856,25 @@ function hideLoading()  { if (loading) loading.style.display = 'none'; }
 function showNotification(message, type = 'info') {
   const existing = document.querySelector('.notification');
   if (existing) existing.remove();
-
-  const icons = {
-    success: 'fa-check-circle',
-    error:   'fa-exclamation-circle',
-    warning: 'fa-exclamation-triangle',
-    info:    'fa-info-circle'
-  };
-
+  const icons = { success:'fa-check-circle', error:'fa-exclamation-circle',
+                  warning:'fa-exclamation-triangle', info:'fa-info-circle' };
   const n = document.createElement('div');
   n.className = `notification ${type}`;
   n.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i><span>${message}</span>`;
   document.body.appendChild(n);
-
-  setTimeout(() => {
-    n.style.animation = 'slideOut 0.3s ease';
-    setTimeout(() => n.remove(), 300);
-  }, 3000);
+  setTimeout(() => { n.style.animation = 'slideOut 0.3s ease'; setTimeout(() => n.remove(), 300); }, 3000);
 }
 
 // ─── History ──────────────────────────────────────────────────────────────────
 function saveQueryToHistory(query) {
   if (!query.trim()) return;
   let history = JSON.parse(localStorage.getItem('queryHistory') || '[]');
-  history.push({ query, timestamp: new Date().toISOString() });
+  history.push({ query, timestamp:new Date().toISOString() });
   if (history.length > 20) history = history.slice(-20);
   localStorage.setItem('queryHistory', JSON.stringify(history));
 }
 
-// ─── Conversation Management ──────────────────────────────────────────────────
+// ─── Conversation management ──────────────────────────────────────────────────
 function loadConversations() {
   const saved = localStorage.getItem('farmbuddy_conversations');
   return saved ? JSON.parse(saved) : [];
@@ -1011,12 +886,7 @@ function saveConversations() {
 
 function getOrCreateConversation() {
   if (conversations.length === 0) {
-    const c = {
-      id: Date.now().toString(),
-      title: 'New Chat',
-      messages: [],
-      timestamp: new Date().toISOString()
-    };
+    const c = { id:Date.now().toString(), title:'New Chat', messages:[], timestamp:new Date().toISOString() };
     conversations.push(c);
     saveConversations();
     return c.id;
@@ -1027,14 +897,11 @@ function getOrCreateConversation() {
 function saveMessage(text, sender) {
   const conv = conversations.find(c => c.id === currentConversationId);
   if (!conv) return;
-
-  conv.messages.push({ text, sender, timestamp: new Date().toISOString() });
-
+  conv.messages.push({ text, sender, timestamp:new Date().toISOString() });
   if (sender === 'user' && conv.messages.filter(m => m.sender === 'user').length === 1) {
     const plain = text.replace(/<[^>]*>/g, '');
     conv.title = plain.substring(0, 35) + (plain.length > 35 ? '…' : '');
   }
-
   conv.timestamp = new Date().toISOString();
   saveConversations();
   renderHistory();
@@ -1048,20 +915,14 @@ function loadCurrentConversation() {
 }
 
 async function newChat() {
-  const c = {
-    id: Date.now().toString(),
-    title: t('newChat', currentLang),
-    messages: [],
-    timestamp: new Date().toISOString()
-  };
+  const c = { id:Date.now().toString(), title:t('newChat', currentLang),
+              messages:[], timestamp:new Date().toISOString() };
   conversations.unshift(c);
   currentConversationId = c.id;
   saveConversations();
-
   if (messagesContainer) messagesContainer.innerHTML = '';
   await loadInitialData();
   renderHistory();
-
   if (window.innerWidth <= 768) toggleSidebar();
 }
 
@@ -1076,11 +937,8 @@ window.loadConversation = loadConversationById;
 
 async function deleteConversation(id, event) {
   event.stopPropagation();
-  const confirmMsg = t('deleteConfirm', currentLang);
-  if (!confirm(confirmMsg)) return;
-
+  if (!confirm(t('deleteConfirm', currentLang))) return;
   conversations = conversations.filter(c => c.id !== id);
-
   if (conversations.length === 0) {
     await newChat();
   } else {
@@ -1090,7 +948,6 @@ async function deleteConversation(id, event) {
       loadCurrentConversation();
     }
   }
-
   saveConversations();
   renderHistory();
 }
@@ -1098,23 +955,20 @@ window.deleteConversation = deleteConversation;
 
 function renderHistory() {
   if (!historyList) return;
-
   if (conversations.length === 0) {
-    historyList.innerHTML = `<div class="empty-history"><i class="fas fa-comment"></i><p>${t('noConversations', currentLang)}</p></div>`;
+    historyList.innerHTML = `<div class="empty-history"><i class="fas fa-comment"></i>
+      <p>${t('noConversations', currentLang)}</p></div>`;
     return;
   }
-
   historyList.innerHTML = conversations.map(c => `
     <div class="history-item ${c.id === currentConversationId ? 'active' : ''}"
-         data-id="${c.id}"
-         onclick="loadConversation('${c.id}')">
+         data-id="${c.id}" onclick="loadConversation('${c.id}')">
       <i class="fas fa-comment"></i>
       <span>${c.title}</span>
       <button class="delete-btn" onclick="deleteConversation('${c.id}', event)">
         <i class="fas fa-times"></i>
       </button>
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
 function filterHistory() {
@@ -1125,13 +979,11 @@ function filterHistory() {
   });
 }
 
-// ─── Welcome Message ──────────────────────────────────────────────────────────
+// ─── Welcome message ──────────────────────────────────────────────────────────
 async function loadInitialData() {
   await loadFAQs(currentLang);
-
   const conv = conversations.find(c => c.id === currentConversationId);
   if (conv && conv.messages.length > 0) return;
-
   await showWelcomeMessage(currentLang);
 }
 
@@ -1140,29 +992,22 @@ async function showWelcomeMessage(lang) {
     <p>🌾 <strong>${t('welcomeTitle', lang)}</strong></p>
     <p>${t('welcomeSubtitle', lang)}</p>
     <div class="info-box">
-      <p><i class="fas fa-seedling"></i> ${t('welcomeItem1', lang)}</p>
+      <p><i class="fas fa-seedling"></i>   ${t('welcomeItem1', lang)}</p>
       <p><i class="fas fa-chart-line"></i> ${t('welcomeItem2', lang)}</p>
-      <p><i class="fas fa-file-alt"></i> ${t('welcomeItem3', lang)}</p>
-      <p><i class="fas fa-search"></i> ${t('welcomeItem4', lang)}</p>
-      <p><i class="fas fa-language"></i> ${t('welcomeItem5', lang)}</p>
+      <p><i class="fas fa-file-alt"></i>   ${t('welcomeItem3', lang)}</p>
+      <p><i class="fas fa-search"></i>     ${t('welcomeItem4', lang)}</p>
+      <p><i class="fas fa-language"></i>   ${t('welcomeItem5', lang)}</p>
     </div>
-    <p>${t('welcomeQuestion', lang)}</p>
-  `;
+    <p>${t('welcomeQuestion', lang)}</p>`;
   addMessageToUI(welcomeHTML, 'ai', 'FarmBuddy AI');
 }
 
-// ─── Animation Styles ─────────────────────────────────────────────────────────
+// ─── Animation styles ─────────────────────────────────────────────────────────
 function addAnimationStyles() {
   const style = document.createElement('style');
   style.textContent = `
-    @keyframes slideIn {
-      from { transform: translateX(100%); opacity: 0; }
-      to   { transform: translateX(0);    opacity: 1; }
-    }
-    @keyframes slideOut {
-      from { transform: translateX(0);    opacity: 1; }
-      to   { transform: translateX(100%); opacity: 0; }
-    }
+    @keyframes slideIn  { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+    @keyframes slideOut { from{transform:translateX(0);opacity:1} to{transform:translateX(100%);opacity:0} }
   `;
   document.head.appendChild(style);
 }

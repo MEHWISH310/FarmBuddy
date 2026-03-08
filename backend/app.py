@@ -21,6 +21,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(VIDEO_UPLOAD_DIR, exist_ok=True)
 
 from nlp.translator import LanguageTranslator
+from nlp.disease_matcher import DiseaseMatcher          # ← NEW
 from data_processor.analyze_prices import PriceAnalyzer
 from vision.predict_disease import DiseasePredictor
 from vision.frame_extractor import FrameExtractor
@@ -28,10 +29,11 @@ from vision.frame_extractor import FrameExtractor
 app = Flask(__name__)
 CORS(app, origins="*", supports_credentials=False)
 
-translator = LanguageTranslator()
-price_analyzer = PriceAnalyzer()
+translator       = LanguageTranslator()
+price_analyzer   = PriceAnalyzer()
 disease_predictor = DiseasePredictor()
-frame_extractor = FrameExtractor()
+frame_extractor  = FrameExtractor()
+disease_matcher  = DiseaseMatcher()                     # ← NEW
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv', 'webm', '3gp'}
@@ -83,6 +85,47 @@ STATIC_CROPS = [
     'बाजरा', 'गेहूं', 'चावल', 'प्याज', 'आलू', 'टमाटर', 'सरसों', 'मक्का',
 ]
 
+# ─── Disease symptom keywords for intent detection ───────────────────────────
+# Multilingual: English + Hindi + Tamil + Telugu + Kannada + Bengali + Gujarati
+# + Marathi + Punjabi + Malayalam
+DISEASE_SYMPTOM_KEYWORDS = [
+    # English visual/symptom words
+    'spot', 'spots', 'lesion', 'lesions', 'blight', 'rust', 'mildew',
+    'wilt', 'wilting', 'yellow', 'yellowing', 'brown', 'browning',
+    'black', 'white', 'orange', 'purple', 'gray', 'grey', 'silver',
+    'mosaic', 'mottle', 'mottling', 'curl', 'curling', 'distort',
+    'distortion', 'necrosis', 'necrotic', 'scorch', 'burn', 'rot',
+    'rotting', 'canker', 'gall', 'ooze', 'pustule', 'powder', 'powdery',
+    'fungus', 'fungal', 'bacteria', 'bacterial', 'virus', 'viral',
+    'mold', 'mould', 'dead', 'dying', 'damage', 'damaged', 'infected',
+    'infection', 'symptom', 'symptoms', 'affect', 'affected', 'disease',
+    'sick', 'unhealthy', 'problem', 'issue', 'holes', 'shot hole',
+    'blotch', 'stripe', 'streaks', 'webbing', 'stippling', 'bronze',
+    'tattered', 'stunted', 'stunting', 'pale', 'chlorosis', 'deficiency',
+    'insect', 'pest', 'mite', 'aphid', 'thrip', 'whitefly',
+    # Hindi
+    'रोग', 'बीमारी', 'धब्बे', 'धब्बा', 'पीला', 'भूरा', 'काला', 'सफेद',
+    'झुलसा', 'रतुआ', 'फफूंद', 'फफूंदी', 'कीट', 'कीड़ा', 'सूखना',
+    'मुरझाना', 'पत्ती', 'पत्तियां', 'नुकसान', 'खराब',
+    # Tamil
+    'நோய்', 'பூஞ்சை', 'துரு', 'கருகல்', 'மஞ்சள்', 'பழுப்பு',
+    'வெள்ளை', 'கறுப்பு', 'பூச்சி', 'அசுவினி', 'பாதிப்பு',
+    # Telugu
+    'వ్యాధి', 'శిలీంద్రం', 'తుప్పు', 'పచ్చపడటం', 'చారలు', 'పురుగు',
+    # Kannada
+    'ರೋಗ', 'ಶಿಲೀಂಧ್ರ', 'ತುಕ್ಕು', 'ಹಳದಿ', 'ಕಂದು', 'ಕೀಟ',
+    # Bengali
+    'রোগ', 'ছত্রাক', 'হলুদ', 'বাদামি', 'পোকা', 'ক্ষতি',
+    # Gujarati
+    'રોગ', 'ફૂગ', 'પીળો', 'ભૂરો', 'જીવાત', 'નુકસાન',
+    # Marathi
+    'रोग', 'बुरशी', 'पिवळे', 'तपकिरी', 'कीड', 'नुकसान',
+    # Punjabi
+    'ਰੋਗ', 'ਉੱਲੀ', 'ਪੀਲਾ', 'ਭੂਰਾ', 'ਕੀੜਾ', 'ਨੁਕਸਾਨ',
+    # Malayalam
+    'രോഗം', 'കുമിൾ', 'മഞ്ഞ', 'തവിട്ട്', 'കീടം', 'നാശം',
+]
+
 
 def detect_crop(text):
     text_lower = text.lower()
@@ -103,6 +146,16 @@ def detect_state(text):
         if re.search(pattern, text_lower):
             return state
     return None
+
+
+def has_symptom_keywords(text):
+    """
+    Check whether the query contains disease/symptom keywords
+    (English or any supported Indian language).
+    Returns True if the text looks like a symptom description.
+    """
+    text_lower = text.lower()
+    return any(kw in text_lower for kw in DISEASE_SYMPTOM_KEYWORDS)
 
 
 def maybe_translate(text, target_lang):
@@ -209,70 +262,91 @@ def get_crop_advisory(crop):
         return jsonify({"error": str(e)}), 500
 
 
+# ─── Chat route ───────────────────────────────────────────────────────────────
 @app.route('/api/chat', methods=['POST'])
 def chat():
     try:
-        data = request.json
-        query = data.get('query', '')
-        ui_lang = data.get('lang', 'en')
+        data     = request.json
+        query    = data.get('query', '')
+        ui_lang  = data.get('lang', 'en')
 
         if not query:
             return jsonify({"error": "No query provided"}), 400
 
+        # ── 1. Translate query to English for NLP processing ──────────────────
         english_query, detected_lang = translator.translate_to_english(query)
         combined = english_query.lower() + ' ' + query.lower()
 
+        # Response language: prefer UI language, fall back to detected language
         response_lang = ui_lang if ui_lang != 'en' else detected_lang
 
+        # ── 2. Intent detection ───────────────────────────────────────────────
         intent = 'general'
-        if any(w in combined for w in ['price', 'rate', 'cost', 'market', 'mandi', 'bhav', 'भाव', 'दाम', 'ਭਾਅ', 'விலை', 'ధర']):
+        if any(w in combined for w in ['price', 'rate', 'cost', 'market', 'mandi', 'bhav',
+                                        'भाव', 'दाम', 'ਭਾਅ', 'விலை', 'ధర']):
             intent = 'market_price'
-        elif any(w in combined for w in ['scheme', 'yojana', 'subsidy', 'sarkari', 'योजना', 'सब्सिडी', 'ਯੋਜਨਾ', 'திட்டம்']):
+        elif any(w in combined for w in ['scheme', 'yojana', 'subsidy', 'sarkari',
+                                          'योजना', 'सब्सिडी', 'ਯੋਜਨਾ', 'திட்டம்']):
             intent = 'scheme'
-        elif any(w in combined for w in ['disease', 'spot', 'yellow', 'brown', 'blight', 'fungus', 'pest', 'रोग', 'कीट', 'நோய்', 'వ్యాధి']):
-            intent = 'disease'
-        elif any(w in combined for w in ['grow', 'plant', 'fertilizer', 'sow', 'harvest', 'advisory', 'खाद', 'बुवाई', 'फसल', 'ಬೆಳೆ', 'పంట']):
+        elif any(w in combined for w in ['grow', 'plant', 'fertilizer', 'sow', 'harvest',
+                                          'advisory', 'खाद', 'बुवाई', 'फसल', 'ಬೆಳೆ', 'పంట']):
             intent = 'advisory'
+        # Disease intent: keyword from original OR english query
+        # We check AFTER advisory so 'how to treat disease' → advisory-ish queries
+        # don't get hijacked, but symptom-rich queries always get disease intent
+        elif (
+            has_symptom_keywords(query) or
+            has_symptom_keywords(english_query) or
+            any(w in combined for w in ['disease', 'spot', 'yellow', 'brown', 'blight',
+                                         'fungus', 'pest', 'रोग', 'कीट', 'நோய்', 'వ్యాధి',
+                                         'detect', 'identify', 'diagnose', 'diagnosis',
+                                         'infected', 'infection', 'symptom'])
+        ):
+            intent = 'disease'
 
-        entities = {}
+        # ── 3. Entity extraction ──────────────────────────────────────────────
+        entities       = {}
         detected_crop  = detect_crop(combined)
         detected_state = detect_state(combined)
-
         if detected_crop:
-            entities['crop'] = detected_crop
+            entities['crop']  = detected_crop
         if detected_state:
             entities['state'] = detected_state
 
         response = ""
 
+        # ── 4. Intent handlers ────────────────────────────────────────────────
+
+        # ── 4a. Market price ──────────────────────────────────────────────────
         if intent == 'market_price':
             if not detected_crop:
-                available = get_available_crops()
+                available     = get_available_crops()
                 available_str = ', '.join(str(c).title() for c in available[:12])
-                query_words = [w for w in english_query.lower().split()
-                               if w not in ['price', 'of', 'in', 'the', 'what', 'is', 'rate',
-                                            'cost', 'market', 'mandi', 'tell', 'me', 'today', 'current']
-                               and len(w) > 2]
-                unknown_crop = query_words[0].title() if query_words else 'That crop'
+                query_words   = [w for w in english_query.lower().split()
+                                 if w not in ['price', 'of', 'in', 'the', 'what', 'is',
+                                              'rate', 'cost', 'market', 'mandi', 'tell',
+                                              'me', 'today', 'current']
+                                 and len(w) > 2]
+                unknown_crop  = query_words[0].title() if query_words else 'That crop'
                 response  = f"😕 Sorry, **{unknown_crop}** is not in my database.\n\n"
                 response += f"📦 **Available crops:** {available_str}\n\n"
                 response += f"💡 *Try: 'onion price in Maharashtra' or 'wheat rate in Punjab'*"
-            elif detected_crop:
+            else:
                 if not detected_state:
                     response  = f"📍 Please specify a state to get accurate prices for **{detected_crop.title()}**.\n\n"
-                    response += f"💡 *Try: '{detected_crop} price in Maharashtra' or '{detected_crop} price in Punjab'*"
+                    response += f"💡 *Try: '{detected_crop} price in Maharashtra'*"
                 else:
                     price_result = price_analyzer.get_crop_price(detected_crop, detected_state)
                     err = price_result.get('error', '')
                     if err == 'crop_not_found':
-                        available = price_result.get('available_crops', get_available_crops())
+                        available     = price_result.get('available_crops', get_available_crops())
                         available_str = ', '.join(str(c).title() for c in available[:12])
                         response  = f"😕 Sorry, **{detected_crop.title()}** is not in my database.\n\n"
                         response += f"📦 **Available crops:** {available_str}\n\n"
                         response += f"💡 *Try: 'onion price in Maharashtra' or 'wheat rate in Punjab'*"
                     elif err == 'state_not_found':
                         available_states = price_result.get('available_states', [])
-                        states_str = ', '.join(str(s).title() for s in available_states[:10])
+                        states_str       = ', '.join(str(s).title() for s in available_states[:10])
                         response  = f"😕 Sorry, **{detected_crop.title()}** data is not available for **{detected_state.title()}**.\n\n"
                         response += f"🗺️ **States available for {detected_crop.title()}:** {states_str}\n\n"
                         response += f"💡 *Try: '{detected_crop} price in {available_states[0].title() if available_states else 'Maharashtra'}'*"
@@ -289,6 +363,7 @@ def chat():
                     else:
                         response = "😕 Could not fetch price data. Please try again with a clearer crop and state name."
 
+        # ── 4b. Scheme ────────────────────────────────────────────────────────
         elif intent == 'scheme':
             try:
                 schemes_path = os.path.join(RAW_DATA_DIR, 'schemes.json')
@@ -296,7 +371,7 @@ def chat():
                     with open(schemes_path, 'r', encoding='utf-8') as f:
                         schemes = json.load(f)
                     if schemes:
-                        response = "📋 **Government Schemes for Farmers:**\n\n"
+                        response  = "📋 **Government Schemes for Farmers:**\n\n"
                         for i, scheme in enumerate(schemes[:3], 1):
                             response += f"{i}. **{scheme.get('name', 'Scheme')}**\n"
                             response += f"   {scheme.get('description', '')[:120]}...\n\n"
@@ -308,6 +383,7 @@ def chat():
             except:
                 response = "Scheme information coming soon!"
 
+        # ── 4c. Advisory ──────────────────────────────────────────────────────
         elif intent == 'advisory':
             if detected_crop:
                 try:
@@ -315,9 +391,12 @@ def chat():
                     if os.path.exists(advisory_path):
                         with open(advisory_path, 'r', encoding='utf-8') as f:
                             advisories = json.load(f)
-                        crop_advice = next((a for a in advisories if a.get('crop', '').lower() == detected_crop.lower()), None)
+                        crop_advice = next(
+                            (a for a in advisories if a.get('crop', '').lower() == detected_crop.lower()),
+                            None
+                        )
                         if crop_advice:
-                            response = f"🌱 **{detected_crop.title()} Growing Guide:**\n\n"
+                            response  = f"🌱 **{detected_crop.title()} Growing Guide:**\n\n"
                             if 'season' in crop_advice:
                                 response += f"📅 **Season:** {crop_advice['season']}\n"
                             if 'soil' in crop_advice:
@@ -337,45 +416,113 @@ def chat():
             else:
                 response = "Please specify a crop name for advisory. For example: *'How to grow tomatoes?'* or *'wheat fertilizer advice'*"
 
+        # ── 4d. Disease — TEXT / VOICE ────────────────────────────────────────
         elif intent == 'disease':
-            response = "🔍 **Disease Detection**\n\nPlease upload a photo or video of your plant using the 📷 or 🎥 buttons in the input box below.\n\nI will analyze it and identify any diseases along with treatment recommendations."
+            # Try NLP matching against crop_diseases.csv using the English query
+            matches = disease_matcher.match_top_n(english_query, n=3)
 
+            if matches:
+                # We have at least one good match
+                top_score = matches[0].get('_score', 0)
+
+                if top_score >= 30 and len(matches) == 1:
+                    # High-confidence single match → show full details
+                    response = disease_matcher.format_response(
+                        matches[0],
+                        confidence_pct=min(top_score, 100)
+                    )
+                elif top_score >= 30 and len(matches) > 1:
+                    # High-confidence but multiple diseases possible
+                    # (e.g. same symptoms for different crops)
+                    # Show best match in full + brief alternatives
+                    response = disease_matcher.format_response(
+                        matches[0],
+                        confidence_pct=min(top_score, 100)
+                    )
+                    if len(matches) > 1:
+                        alt = matches[1]
+                        response += (
+                            f"\n\n💡 *Also possible: **{alt.get('possible_disease','')}** "
+                            f"({alt.get('crop','').title()}) — "
+                            f"upload a 📷 photo for confirmation.*"
+                        )
+                elif top_score >= 15:
+                    # Medium confidence → show top 3 as possibilities
+                    response = disease_matcher.format_multi_response(matches)
+                else:
+                    # Low score — not enough info, ask for more details
+                    response = disease_matcher.format_multi_response([])
+            else:
+                # No match — guide the user to provide more details or upload image
+                if detected_crop:
+                    response = (
+                        f"🌾 I can see you're asking about **{detected_crop.title()}** diseases, "
+                        f"but I need more symptom details to identify the disease.\n\n"
+                        f"Please describe:\n"
+                        f"• **Leaf appearance** — colour, spots, shape of lesions\n"
+                        f"• **Affected parts** — leaves, stem, fruit, roots\n"
+                        f"• **Spread pattern** — new leaves, old leaves, whole plant\n\n"
+                        f"Or upload a 📷 **photo** / 🎥 **video** for instant AI diagnosis."
+                    )
+                else:
+                    response = (
+                        "🔍 **Disease Detection via Text/Voice**\n\n"
+                        "To identify a disease, please describe:\n"
+                        "• The **crop name** (e.g. tomato, wheat, potato)\n"
+                        "• **Leaf/plant symptoms** (e.g. 'yellow spots', 'brown lesions with rings')\n"
+                        "• Any **colour changes, wilting, or unusual growth**\n\n"
+                        "Or upload a 📷 **photo** / 🎥 **video** for instant AI-powered diagnosis."
+                    )
+
+            # Append photo/video prompt as a soft suggestion (always helpful)
+            response += (
+                "\n\n📷 *For a more accurate diagnosis, you can also upload a photo or video "
+                "using the camera/video buttons below.*"
+            )
+
+        # ── 4e. General / greeting ────────────────────────────────────────────
         else:
-            if any(w in combined for w in ['hi', 'hello', 'namaste', 'hey', 'नमस्ते', 'ਸਤ ਸ੍ਰੀ ਅਕਾਲ', 'வணக்கம்', 'నమస్కారం']):
-                available = get_available_crops()
+            if any(w in combined for w in ['hi', 'hello', 'namaste', 'hey',
+                                            'नमस्ते', 'ਸਤ ਸ੍ਰੀ ਅਕਾਲ', 'வணக்கம்', 'నమస్కారం']):
+                available     = get_available_crops()
                 available_str = ', '.join(c.title() for c in available[:8])
                 response  = "👋 **Namaste! I'm FarmBuddy**, your AI farming assistant.\n\n"
                 response += "I can help you with:\n"
                 response += "• 🌾 **Crop prices** — *'onion price in Assam'*\n"
                 response += "• 📋 **Government schemes** — *'show farmer schemes'*\n"
                 response += "• 🌱 **Farming advice** — *'how to grow wheat?'*\n"
-                response += "• 🔍 **Disease detection** — upload a plant photo or video\n\n"
+                response += "• 🔍 **Disease detection** — describe symptoms or upload a photo/video\n\n"
                 response += f"📦 **Available price data for:** {available_str}"
             else:
                 response  = "I'm not sure I understood that. Try asking:\n"
                 response += "• **Market prices:** *'onion price in Maharashtra'*\n"
                 response += "• **Government schemes:** *'show me farmer schemes'*\n"
                 response += "• **Crop advice:** *'how to grow tomatoes?'*\n"
-                response += "• **Disease detection:** Upload a plant photo or video using the 📷 🎥 buttons"
+                response += "• **Disease detection:** Describe symptoms or upload a plant photo/video"
 
+        # ── 5. Translate response to user's language ──────────────────────────
         if response_lang and response_lang != 'en':
             response = translator.translate_response(response, response_lang)
 
         return jsonify({
-            'original_query': query,
+            'original_query':    query,
             'detected_language': detected_lang,
             'response_language': response_lang,
-            'english_query': english_query,
-            'intent': intent,
-            'entities': entities,
-            'response': response
+            'english_query':     english_query,
+            'intent':            intent,
+            'entities':          entities,
+            'response':          response,
+            # extra metadata for disease text responses
+            'disease_match_count': len(matches) if intent == 'disease' and 'matches' in dir() else 0,
         })
 
     except Exception as e:
         print(f"Chat error: {e}")
+        import traceback; traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 
+# ─── Image disease prediction ─────────────────────────────────────────────────
 @app.route('/api/predict-disease', methods=['POST'])
 def predict_disease():
     try:
@@ -387,8 +534,8 @@ def predict_disease():
         if not allowed_file(file.filename):
             return jsonify({"error": "File type not allowed. Use jpg, jpeg, png, gif"}), 400
 
-        ext      = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else 'jpg'
-        filename = f"upload_{int(time.time())}.{ext}"
+        ext       = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else 'jpg'
+        filename  = f"upload_{int(time.time())}.{ext}"
         temp_path = os.path.join(UPLOAD_DIR, filename)
         file.save(temp_path)
 
@@ -406,6 +553,7 @@ def predict_disease():
         return jsonify({"error": str(e)}), 500
 
 
+# ─── Video disease prediction ─────────────────────────────────────────────────
 @app.route('/api/predict-disease-video', methods=['POST'])
 def predict_disease_video():
     try:
@@ -413,10 +561,8 @@ def predict_disease_video():
             return jsonify({"error": "No video uploaded"}), 400
 
         file = request.files['video']
-
         if file.filename == '':
             return jsonify({"error": "No file selected"}), 400
-
         if not allowed_video_file(file.filename):
             return jsonify({
                 "error": "File type not allowed. Use mp4, avi, mov, mkv, webm, or 3gp"
@@ -447,13 +593,13 @@ def predict_disease_video():
         return jsonify({"error": str(e)}), 500
 
 
+# ─── Translate API ────────────────────────────────────────────────────────────
 @app.route('/api/translate', methods=['POST'])
 def translate_text_api():
     try:
-        data = request.json
+        data        = request.json
         target_lang = data.get('target_lang', 'en')
 
-        # Batch mode: { texts: [...], target_lang: 'ta' }
         if 'texts' in data:
             texts = data.get('texts', [])
             if not texts or target_lang == 'en':
@@ -461,7 +607,6 @@ def translate_text_api():
             results = [translator.translate_text(t, target_lang) for t in texts]
             return jsonify({'translated_texts': results})
 
-        # Single mode (backward compatible)
         text = data.get('text', '')
         if not text or target_lang == 'en':
             return jsonify({'translated_text': text})
@@ -474,6 +619,7 @@ def get_available_crops_api():
     return jsonify({"crops": get_available_crops()})
 
 
+# ─── Health check ─────────────────────────────────────────────────────────────
 @app.route('/api/health', methods=['GET'])
 def health_check():
     return jsonify({
@@ -481,10 +627,12 @@ def health_check():
         "message": "FarmBuddy API is running",
         "supported_languages": list(translator.supported_languages.keys()),
         "available_crops": get_available_crops(),
+        "disease_matcher_loaded": disease_matcher.is_loaded,
+        "disease_matcher_records": len(disease_matcher.records),
         "paths": {
-            "project_root": PROJECT_ROOT,
-            "data_dir": DATA_DIR,
-            "upload_dir": UPLOAD_DIR,
+            "project_root":    PROJECT_ROOT,
+            "data_dir":        DATA_DIR,
+            "upload_dir":      UPLOAD_DIR,
             "video_upload_dir": VIDEO_UPLOAD_DIR
         }
     })
@@ -502,17 +650,19 @@ def home():
             "/api/faqs?lang=hi",
             "/api/predict-disease (POST) — image upload",
             "/api/predict-disease-video (POST) — video upload",
-            "/api/chat (POST) — accepts {query, lang}",
-            "/api/translate (POST) — accepts {text, target_lang}"
+            "/api/chat (POST) — accepts {query, lang} — supports text/voice disease detection",
+            "/api/translate (POST) — accepts {text, target_lang}",
         ]
     })
 
 
 if __name__ == '__main__':
     print("🚀 FarmBuddy Backend Starting...")
-    print(f"📁 Project Root: {PROJECT_ROOT}")
+    print(f"📁 Project Root : {PROJECT_ROOT}")
     print(f"📁 Data Directory: {DATA_DIR}")
     print(f"📦 Available crops: {get_available_crops()}")
     print(f"🌐 Supported languages: {list(translator.supported_languages.keys())}")
+    print(f"🔬 Disease matcher loaded: {disease_matcher.is_loaded} "
+          f"({len(disease_matcher.records)} records)")
     print(f"🌐 Server running on http://127.0.0.1:5000")
     app.run(debug=True, port=5000)

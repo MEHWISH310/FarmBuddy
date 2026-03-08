@@ -1,19 +1,8 @@
-/**
- * FarmBuddy AI — translations.js
- * Pure dynamic translation engine.
- * All UI strings are translated via /api/translate at runtime.
- * English is always the default — no API calls on first load.
- * Translations are cached in memory per session.
- */
-
 const API_BASE_URL = 'http://127.0.0.1:5000/api';
 
-// ─── In-memory translation cache: { langCode: { key: translatedText } } ──────
 const _translationCache = {};
 
-// ─── All English UI strings (source of truth) ────────────────────────────────
 const UI_STRINGS = {
-  // Sidebar / header
   farmerAssistant:      'Farmer Assistant',
   newChat:              'New chat',
   searchPlaceholder:    'Search conversations...',
@@ -21,29 +10,23 @@ const UI_STRINGS = {
   deleteConfirm:        'Delete this conversation?',
   localWeather:         'Local Weather',
 
-  // Quick actions
   cropAdvisory:         'Crop Advisory',
   marketPrices:         'Market Prices',
   govtSchemes:          'Govt Schemes',
   diseaseDetection:     'Disease Detection',
 
-  // Input area
   inputPlaceholder:     'Ask your farming question or describe plant symptoms in any language...',
   disclaimer:           'FarmBuddy AI can make mistakes. Verify important information with experts.',
 
-  // Loading
   analyzing:            'Analyzing your query...',
   analyzingVideo:       'Analyzing video frames...',
 
-  // Theme
   darkMode:             'Dark mode enabled',
   lightMode:            'Light mode enabled',
 
-  // Language switch
   languageChanged:      'Language changed to',
   translating:          'Translating...',
 
-  // Notifications
   copied:               'Copied to clipboard!',
   copyFailed:           'Could not copy text',
   bookmarkSaved:        'Bookmarked!',
@@ -58,7 +41,6 @@ const UI_STRINGS = {
   imageSelected:        'image(s) selected',
   videoSelected:        'Video selected',
 
-  // Disease result — image / video
   diseaseIdentified:    '🔍 Disease Analysis Result',
   diseaseLabel:         'Disease',
   confidenceLabel:      'Confidence',
@@ -69,12 +51,10 @@ const UI_STRINGS = {
   framesAnalysed:       'Frames analysed',
   videoUploaded:        'Uploaded video for disease analysis',
 
-  // Disease detection — text / voice
   textDiseaseTitle:     '🔍 Disease Identified from Description',
   textDiseaseNoMatch:   'Could not identify disease from description. Please add more symptom details or upload a photo.',
   textDiseasePrompt:    'Describe plant symptoms to identify disease — or upload a photo/video below',
 
-  // Welcome message
   welcomeTitle:         'Welcome to FarmBuddy AI!',
   welcomeSubtitle:      'Your intelligent farming assistant. How can I help you today?',
   welcomeItem1:         'Crop prices — ask for any crop price by state',
@@ -84,7 +64,6 @@ const UI_STRINGS = {
   welcomeItem5:         'Multi-language support — ask in any Indian language',
   welcomeQuestion:      'What would you like to know today?',
 
-  // Quick action responses — crop
   qaCropTitle:          'Crop Advisory',
   qaCropIntro:          'I can help with growing advice for all crops. Try asking:',
   qaCropEx1:            'How to grow tomatoes?',
@@ -93,7 +72,6 @@ const UI_STRINGS = {
   qaCropEx4:            'Onion farming tips',
   qaTypeBelow:          'Type your question below ⬇️',
 
-  // Quick action responses — market
   qaMarketTitle:        'Market Prices',
   qaMarketIntro:        'I can fetch live market prices. Try asking:',
   qaMarketEx1:          'Onion price in Maharashtra',
@@ -101,7 +79,6 @@ const UI_STRINGS = {
   qaMarketEx3:          'Tomato price in Karnataka',
   qaMarketEx4:          'Rice price in West Bengal',
 
-  // Quick action responses — schemes
   qaSchemesTitle:       'Government Schemes',
   qaSchemesIntro:       'Available farmer welfare schemes:',
   qaSchemesEx1:         'PM-KISAN — ₹6,000/year direct income support',
@@ -109,7 +86,6 @@ const UI_STRINGS = {
   qaSchemesEx3:         'Kisan Credit Card — Easy credit up to ₹3 lakh at 4%',
   qaSchemesEx4:         'Soil Health Card — Free soil testing',
 
-  // Quick action responses — disease (updated with text/voice options)
   qaDiseaseTitle:       'Disease Detection',
   qaDiseaseTextPrompt:  'You can detect plant diseases in two ways:',
   qaDiseaseTextWay:     '📝 Text / Voice',
@@ -120,7 +96,6 @@ const UI_STRINGS = {
   qaDiseaseNote:        'Tip: Mention the crop name + symptoms for best text-based results.',
 };
 
-// ─── Batch translate all UI strings for a language ───────────────────────────
 async function loadUITranslations(lang) {
   if (lang === 'en') return UI_STRINGS;
   if (_translationCache[lang]) return _translationCache[lang];
@@ -144,11 +119,10 @@ async function loadUITranslations(lang) {
     _translationCache[lang] = translated;
     return translated;
   } catch (_) {
-    return UI_STRINGS;  // fallback: English
+    return UI_STRINGS;
   }
 }
 
-// ─── Translate a single string via /api/translate ────────────────────────────
 async function translateViaAPI(text, targetLang) {
   if (!text || targetLang === 'en') return text;
   try {
@@ -164,7 +138,6 @@ async function translateViaAPI(text, targetLang) {
   }
 }
 
-// ─── Get a single UI string (sync, from cache or English fallback) ────────────
 function t(key, lang) {
   if (!lang || lang === 'en') return UI_STRINGS[key] || key;
   const cache = _translationCache[lang];
@@ -172,19 +145,16 @@ function t(key, lang) {
   return UI_STRINGS[key] || key;
 }
 
-// ─── Translate any arbitrary text dynamically ────────────────────────────────
 async function translateText(text, lang) {
   if (!lang || lang === 'en' || !text) return text;
   return await translateViaAPI(text, lang);
 }
 
-// ─── Pre-warm cache for a language ───────────────────────────────────────────
 async function warmTranslationCache(lang) {
   if (lang === 'en' || _translationCache[lang]) return;
   await loadUITranslations(lang);
 }
 
-// ─── Expose globally ──────────────────────────────────────────────────────────
 window.t                    = t;
 window.translateText        = translateText;
 window.loadUITranslations   = loadUITranslations;

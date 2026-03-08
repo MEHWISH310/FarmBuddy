@@ -5,27 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FarmBuddy AI - Intelligent Agricultural Assistant</title>
     <link rel="icon" type="image/png" href="logo.png">
-    
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
-    <!-- Add after Google Fonts - Inter -->
-<!-- Fonts for RTL languages -->
-<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- Google Fonts - Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Main CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- App Container -->
     <div class="app">
-        <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <!-- Logo — brand name "FarmBuddy" is never translated -->
                 <div class="sidebar-logo">
                     <img src="./image.png" alt="FarmBuddy Logo" width="36" height="36" style="border-radius:8px; object-fit:cover;">
                     <span>FarmBuddy</span>
@@ -38,30 +26,23 @@
                 </button>
             </div>
 
-            <!-- Language Selector — populated by JS from INDIAN_LANGUAGES (15 langs) -->
             <div class="language-selector-container">
-                <select class="language-select" id="languageSelect">
-                    <!-- Populated by script.js -->
-                </select>
+                <select class="language-select" id="languageSelect"></select>
             </div>
 
-            <!-- Search Bar -->
             <div class="search-container">
                 <i class="fas fa-search search-icon"></i>
                 <input type="text" placeholder="Search conversations..." class="search-input" id="searchInput">
             </div>
 
-            <!-- Chat History -->
             <div class="history-list" id="historyList"></div>
 
-            <!-- Sidebar Footer -->
             <div class="sidebar-footer">
                 <div class="user-info">
                     <div class="user-avatar">
                         <i class="fas fa-seedling"></i>
                     </div>
                     <div class="user-details">
-                        <!-- Brand name stays "FarmBuddy"; role label is translated -->
                         <span class="user-name">FarmBuddy</span>
                         <span class="user-plan">Farmer Assistant</span>
                     </div>
@@ -74,16 +55,13 @@
             </div>
         </aside>
 
-        <!-- Main Content -->
         <main class="main-content">
-            <!-- Mobile Header -->
             <div class="mobile-header">
                 <button class="menu-btn" id="menuBtn">
                     <i class="fas fa-bars"></i>
                 </button>
                 <div class="mobile-title-group">
                     <img src="./image.png" alt="Logo" width="28" height="28" style="border-radius:6px; object-fit:cover;">
-                    <!-- Brand name never translated -->
                     <h2 class="mobile-title">FarmBuddy AI</h2>
                 </div>
                 <button class="mobile-new-chat" id="mobileNewChat">
@@ -91,20 +69,15 @@
                 </button>
             </div>
 
-            <!-- Weather Widget -->
             <div class="weather-widget-top" id="weatherWidget">
-                <i class="fas fa-sun"></i>
-                <span>28°C | Sunny</span>
+                <i class="fas fa-sun" id="weatherIcon"></i>
+                <span id="weatherTemp">--°C</span>
                 <span class="weather-divider">|</span>
-                <span>Local Weather</span>
+                <span id="weatherLocation">Loading...</span>
             </div>
 
-            <!-- Messages Container -->
-            <div class="messages" id="messages">
-                <!-- Welcome Message injected by JS via loadInitialData() -->
-            </div>
+            <div class="messages" id="messages"></div>
 
-            <!-- Quick Actions — labels translated by JS -->
             <div class="quick-actions-bar" id="quickActions">
                 <button class="quick-action" onclick="setQuery('crop')">
                     <i class="fas fa-seedling"></i>
@@ -124,9 +97,7 @@
                 </button>
             </div>
 
-            <!-- Input Area -->
             <div class="input-area">
-                <!-- Image Preview -->
                 <div id="imagePreview" class="image-preview-container"></div>
 
                 <div class="input-container">
@@ -153,7 +124,6 @@
                     </div>
                 </div>
 
-                <!-- Disclaimer — translated by JS -->
                 <div class="disclaimer">
                     FarmBuddy AI can make mistakes. Verify important information with experts.
                 </div>
@@ -161,11 +131,9 @@
         </main>
     </div>
 
-    <!-- Hidden file inputs -->
     <input type="file" id="imageUpload" accept="image/*" multiple style="display:none">
     <input type="file" id="videoUpload" accept="video/*" style="display:none">
 
-    <!-- Loading Indicator -->
     <div id="loading" class="loading-overlay" style="display:none;">
         <div class="loading-spinner"></div>
         <p>Analyzing your query...</p>
@@ -176,13 +144,9 @@
         </div>
     </div>
 
-    <!-- Response area (hidden) -->
     <div id="responseArea" style="display:none;"></div>
 
-    <!-- ① Load translations FIRST so t() is available to script.js -->
     <script src="translations.js"></script>
-
-    <!-- ② Main application logic -->
     <script src="script.js"></script>
 </body>
 </html>

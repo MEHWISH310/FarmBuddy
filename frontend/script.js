@@ -1,11 +1,3 @@
-/**
- * FarmBuddy AI — script.js
- * Updated: text/voice disease detection with full multilingual support
- */
-
-// API_BASE_URL comes from translations.js (global)
-
-// ─── Supported languages ──────────────────────────────────────────────────────
 const INDIAN_LANGUAGES = {
   'en': 'English',
   'hi': 'हिन्दी',
@@ -23,31 +15,45 @@ const INDIAN_LANGUAGES = {
   'ks': 'कॉशुर',
 };
 
-// ─── Voice language map ───────────────────────────────────────────────────────
 const VOICE_LANG_MAP = {
   hi:'hi-IN', ta:'ta-IN', te:'te-IN', bn:'bn-IN', mr:'mr-IN',
   gu:'gu-IN', kn:'kn-IN', ml:'ml-IN', pa:'pa-IN', ur:'ur-PK',
   or:'or-IN', ne:'ne-NP', ks:'ur-PK', en:'en-US'
 };
 
-// ─── RTL languages ────────────────────────────────────────────────────────────
 const RTL_LANGUAGES = ['ur', 'ks'];
 
-// ─── State ────────────────────────────────────────────────────────────────────
+const WMO_ICONS = {
+  0:'fa-sun', 1:'fa-sun', 2:'fa-cloud-sun', 3:'fa-cloud',
+  45:'fa-smog', 48:'fa-smog',
+  51:'fa-cloud-drizzle', 53:'fa-cloud-drizzle', 55:'fa-cloud-drizzle',
+  61:'fa-cloud-rain', 63:'fa-cloud-rain', 65:'fa-cloud-showers-heavy',
+  71:'fa-snowflake', 73:'fa-snowflake', 75:'fa-snowflake',
+  80:'fa-cloud-rain', 81:'fa-cloud-showers-heavy', 82:'fa-cloud-showers-heavy',
+  95:'fa-bolt', 96:'fa-bolt', 99:'fa-bolt'
+};
+
+const WMO_LABELS = {
+  0:'Clear', 1:'Mainly Clear', 2:'Partly Cloudy', 3:'Overcast',
+  45:'Foggy', 48:'Foggy',
+  51:'Light Drizzle', 53:'Drizzle', 55:'Heavy Drizzle',
+  61:'Light Rain', 63:'Rain', 65:'Heavy Rain',
+  71:'Light Snow', 73:'Snow', 75:'Heavy Snow',
+  80:'Showers', 81:'Heavy Showers', 82:'Violent Showers',
+  95:'Thunderstorm', 96:'Thunderstorm', 99:'Thunderstorm'
+};
+
 let currentLang = localStorage.getItem('farmbuddy_lang') || 'en';
 let isTranslatingUI = false;
 
-// ─── DOM References ───────────────────────────────────────────────────────────
 let themeToggle, voiceBtn, queryInput, imageUpload, videoUpload;
 let imagePreview, languageSelect, messagesContainer, loading;
 let sendBtn, sidebar, menuBtn, closeSidebarBtn;
 let newChatBtn, mobileNewChat, searchInput, historyList;
 
-// ─── Conversation State ───────────────────────────────────────────────────────
 let conversations = loadConversations();
 let currentConversationId = getOrCreateConversation();
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async function () {
   initializeElements();
   initializeTheme();
@@ -60,6 +66,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   setPageDirection(currentLang);
   await loadInitialData();
   await forceApplyAllTranslations(currentLang);
+  loadWeatherWidget();
 });
 
 function initializeElements() {
@@ -82,7 +89,29 @@ function initializeElements() {
   historyList       = document.getElementById('historyList');
 }
 
-// ─── Force apply all translations ─────────────────────────────────────────────
+async function loadWeatherWidget() {
+  const iconEl     = document.getElementById('weatherIcon');
+  const tempEl     = document.getElementById('weatherTemp');
+  const locationEl = document.getElementById('weatherLocation');
+
+  try {
+    const res  = await fetch('https://api.open-meteo.com/v1/forecast?latitude=12.9165&longitude=79.1325&current_weather=true');
+    const data = await res.json();
+    const w    = data.current_weather || {};
+    const temp = w.temperature != null ? `${w.temperature}°C` : '--°C';
+    const code = w.weathercode;
+    const icon  = WMO_ICONS[code]  || 'fa-cloud';
+    const label = WMO_LABELS[code] || 'Weather';
+
+    if (iconEl)     iconEl.className   = `fas ${icon}`;
+    if (tempEl)     tempEl.textContent = `${temp} | ${label}`;
+    if (locationEl) locationEl.textContent = 'Vellore, Tamil Nadu';
+  } catch (_) {
+    if (tempEl)     tempEl.textContent   = '--°C | Weather';
+    if (locationEl) locationEl.textContent = 'Vellore, Tamil Nadu';
+  }
+}
+
 async function forceApplyAllTranslations(lang) {
   if (lang !== 'en') await loadUITranslations(lang);
   await updateAllUIText(lang);
@@ -113,8 +142,6 @@ async function updateAllUIText(lang) {
   const loadingP = document.querySelector('.loading-overlay p');
   if (loadingP) loadingP.textContent = t('analyzing', lang);
 
-  const weatherSpans = document.querySelectorAll('.weather-widget-top span');
-  if (weatherSpans.length >= 3) weatherSpans[2].textContent = t('localWeather', lang);
 
   if (newChatBtn)    newChatBtn.title    = t('newChat', lang);
   if (mobileNewChat) mobileNewChat.title = t('newChat', lang);
@@ -134,7 +161,6 @@ function updateElementsById(lang) {
     });
 }
 
-// ─── Page direction ───────────────────────────────────────────────────────────
 function setPageDirection(lang) {
   const dir = RTL_LANGUAGES.includes(lang) ? 'rtl' : 'ltr';
   document.documentElement.setAttribute('dir', dir);
@@ -148,7 +174,6 @@ function setPageDirection(lang) {
   }
 }
 
-// ─── Theme ────────────────────────────────────────────────────────────────────
 function initializeTheme() {
   const saved = localStorage.getItem('theme') || 'light';
   document.documentElement.setAttribute('data-theme', saved);
@@ -171,7 +196,6 @@ function updateThemeIcon(theme) {
   if (icon) icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
 }
 
-// ─── Language selector ────────────────────────────────────────────────────────
 function setupLanguageSelector() {
   if (!languageSelect) return;
   languageSelect.innerHTML = '';
@@ -210,7 +234,6 @@ async function maybeTranslate(text, lang) {
   return await translateText(text, target);
 }
 
-// ─── FAQs ─────────────────────────────────────────────────────────────────────
 async function loadFAQs(lang = 'en') {
   try {
     const res = await fetch(`${API_BASE_URL}/faqs?lang=${lang}`);
@@ -219,7 +242,6 @@ async function loadFAQs(lang = 'en') {
   } catch (_) {}
 }
 
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
 function setupSidebar() {
   if (menuBtn)         menuBtn.addEventListener('click', toggleSidebar);
   if (closeSidebarBtn) closeSidebarBtn.addEventListener('click', toggleSidebar);
@@ -238,7 +260,6 @@ function toggleSidebar() {
   if (sidebar) sidebar.classList.toggle('open');
 }
 
-// ─── Event listeners ──────────────────────────────────────────────────────────
 function setupEventListeners() {
   if (sendBtn) sendBtn.addEventListener('click', submitQuery);
   if (queryInput) {
@@ -262,7 +283,6 @@ function autoResizeTextarea() {
   queryInput.style.height = Math.min(queryInput.scrollHeight, 200) + 'px';
 }
 
-// ─── Voice input ──────────────────────────────────────────────────────────────
 let _recognition = null;
 let _isRecording = false;
 
@@ -274,9 +294,9 @@ function setupVoiceInput() {
   }
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   _recognition = new SpeechRecognition();
-  _recognition.continuous      = false;
-  _recognition.interimResults  = true;
-  _recognition.lang            = VOICE_LANG_MAP[currentLang] || 'en-US';
+  _recognition.continuous     = false;
+  _recognition.interimResults = true;
+  _recognition.lang           = VOICE_LANG_MAP[currentLang] || 'en-US';
 
   _recognition.onresult = (event) => {
     const transcript = Array.from(event.results).map(r => r[0].transcript).join('');
@@ -314,7 +334,6 @@ function setupVoiceInput() {
   });
 }
 
-// ─── Image upload ─────────────────────────────────────────────────────────────
 function setupImageUpload() {
   if (!imageUpload || !imagePreview) return;
   imageUpload.addEventListener('change', async function (e) {
@@ -364,9 +383,7 @@ async function analyzeDiseaseImage(file) {
   }
 }
 
-// ─── Disease result display — shared by image, video AND text/voice ───────────
 async function displayDiseaseResult(data, source = 'image') {
-
   if (source === 'text') {
     const formattedResponse = formatMarkdown(data.response.replace(/\n/g, '<br>'));
     addMessageToUI(formattedResponse, 'ai', 'FarmBuddy AI');
@@ -388,10 +405,10 @@ async function displayDiseaseResult(data, source = 'image') {
         : t('diseaseIdentified', currentLang),
       currentLang
     ),
-    maybeTranslate(t('diseaseLabel',     currentLang), currentLang),
-    maybeTranslate(t('confidenceLabel',  currentLang), currentLang),
-    maybeTranslate(t('treatmentLabel',   currentLang), currentLang),
-    maybeTranslate(disease,              currentLang),
+    maybeTranslate(t('diseaseLabel',    currentLang), currentLang),
+    maybeTranslate(t('confidenceLabel', currentLang), currentLang),
+    maybeTranslate(t('treatmentLabel',  currentLang), currentLang),
+    maybeTranslate(disease,             currentLang),
     maybeTranslate(data.treatment || '', currentLang),
     maybeTranslate(`${t('translatedNote', currentLang)} ${langName}`, currentLang),
   ]);
@@ -428,7 +445,6 @@ async function displayDiseaseResult(data, source = 'image') {
   }, 3000);
 }
 
-// ─── Video upload ─────────────────────────────────────────────────────────────
 function setupVideoUpload() {
   if (!videoUpload) return;
   videoUpload.addEventListener('change', async function (e) {
@@ -507,7 +523,6 @@ async function analyzeDiseaseVideo(file) {
   }
 }
 
-// ─── Submit query ─────────────────────────────────────────────────────────────
 async function submitQuery() {
   if (!queryInput) return;
   const query = queryInput.value.trim();
@@ -539,7 +554,6 @@ async function submitQuery() {
     } else {
       await displayChatResponse(data);
     }
-
   } catch (_) {
     hideTypingIndicator();
     hideLoading();
@@ -548,7 +562,6 @@ async function submitQuery() {
   }
 }
 
-// ─── Display chat response (non-disease) ──────────────────────────────────────
 async function displayChatResponse(data) {
   let response = data.response || '';
   if (currentLang !== 'en' && data.response_language === 'en') {
@@ -591,7 +604,6 @@ async function displayChatResponse(data) {
   saveMessage(html, 'ai');
 }
 
-// ─── Fallback response ────────────────────────────────────────────────────────
 async function generateAndDisplayFallback(query) {
   const q = query.toLowerCase();
   let response = '';
@@ -646,7 +658,6 @@ async function generateAndDisplayFallback(query) {
   saveMessage(response, 'ai');
 }
 
-// ─── Markdown formatter ───────────────────────────────────────────────────────
 function formatMarkdown(text) {
   return text
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
@@ -660,7 +671,6 @@ function formatMarkdown(text) {
              '$1<span style="display:block;padding-left:14px;margin:2px 0;"><strong>$2</strong>$3</span>');
 }
 
-// ─── Message bubble ───────────────────────────────────────────────────────────
 function addMessageToUI(text, sender, senderLabel) {
   if (!messagesContainer) return;
   const div    = document.createElement('div');
@@ -696,7 +706,6 @@ function addMessageToUI(text, sender, senderLabel) {
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// ─── Typing indicator ─────────────────────────────────────────────────────────
 function showTypingIndicator() {
   if (!messagesContainer) return;
   const div = document.createElement('div');
@@ -716,7 +725,6 @@ function hideTypingIndicator() {
   if (el) el.remove();
 }
 
-// ─── Quick action buttons ─────────────────────────────────────────────────────
 window.setQuery = async function (type) {
   const lang = currentLang;
   const templates = {
@@ -765,7 +773,6 @@ ${t('qaDiseaseTextPrompt', lang) ||
   addMessageToUI(templates[type](), 'ai', 'FarmBuddy AI');
 };
 
-// ─── Text-to-speech ───────────────────────────────────────────────────────────
 window.textToSpeech = async function (button) {
   const content = button.closest('.message-content');
   if (!content) return;
@@ -791,7 +798,6 @@ window.textToSpeech = async function (button) {
   window.speechSynthesis.speak(utterance);
 };
 
-// ─── Copy ─────────────────────────────────────────────────────────────────────
 window.copyMsg = async function (button) {
   const text = button.closest('.message-content').querySelector('.message-text').innerText;
   try {
@@ -802,7 +808,6 @@ window.copyMsg = async function (button) {
   }
 };
 
-// ─── Share ────────────────────────────────────────────────────────────────────
 window.shareResponse = async function (button) {
   const text = button.closest('.message-content').querySelector('.message-text').innerText;
   if (navigator.share) {
@@ -814,7 +819,6 @@ window.shareResponse = async function (button) {
   }
 };
 
-// ─── Bookmark ─────────────────────────────────────────────────────────────────
 window.bookmarkResponse = async function (button) {
   const icon    = button.querySelector('i');
   const content = button.closest('.message-content');
@@ -834,11 +838,9 @@ window.bookmarkResponse = async function (button) {
   }
 };
 
-// ─── Loading ──────────────────────────────────────────────────────────────────
 function showLoading() { if (loading) loading.style.display = 'flex'; }
 function hideLoading()  { if (loading) loading.style.display = 'none'; }
 
-// ─── Notifications ────────────────────────────────────────────────────────────
 function showNotification(message, type = 'info') {
   const existing = document.querySelector('.notification');
   if (existing) existing.remove();
@@ -851,7 +853,6 @@ function showNotification(message, type = 'info') {
   setTimeout(() => { n.style.animation = 'slideOut 0.3s ease'; setTimeout(() => n.remove(), 300); }, 3000);
 }
 
-// ─── History ──────────────────────────────────────────────────────────────────
 function saveQueryToHistory(query) {
   if (!query.trim()) return;
   let history = JSON.parse(localStorage.getItem('queryHistory') || '[]');
@@ -860,7 +861,6 @@ function saveQueryToHistory(query) {
   localStorage.setItem('queryHistory', JSON.stringify(history));
 }
 
-// ─── Conversation management ──────────────────────────────────────────────────
 function loadConversations() {
   const saved = localStorage.getItem('farmbuddy_conversations');
   return saved ? JSON.parse(saved) : [];
@@ -965,7 +965,6 @@ function filterHistory() {
   });
 }
 
-// ─── Welcome message ──────────────────────────────────────────────────────────
 async function loadInitialData() {
   await loadFAQs(currentLang);
   const conv = conversations.find(c => c.id === currentConversationId);
@@ -988,7 +987,6 @@ async function showWelcomeMessage(lang) {
   addMessageToUI(welcomeHTML, 'ai', 'FarmBuddy AI');
 }
 
-// ─── Animation styles ─────────────────────────────────────────────────────────
 function addAnimationStyles() {
   const style = document.createElement('style');
   style.textContent = `

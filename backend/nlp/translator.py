@@ -40,7 +40,7 @@ class LanguageTranslator:
             'or': 'or',
             'ur': 'ur',
             'ne': 'ne',
-            'ks': 'ur',   # Kashmiri → Urdu script as closest
+            'ks': 'ur',
         }
 
         self.fallback_to_hindi = {'ks'}
@@ -74,7 +74,7 @@ class LanguageTranslator:
                 return translated.text, original_lang
             return text, original_lang
         except Exception as e:
-            print(f"[Translator] translate_to_english error: {e}")
+            print(f"translate_to_english error: {e}")
             return text, 'en'
 
     def translate_text(self, text, target_lang='hi'):
@@ -92,7 +92,7 @@ class LanguageTranslator:
                 return translated.text
             return text
         except Exception as e:
-            print(f"[Translator] translate_text error for '{target_lang}': {e}")
+            print(f"translate_text error for '{target_lang}': {e}")
             if target_lang in self.fallback_to_hindi:
                 try:
                     fallback = self.translator.translate(text, dest='hi')
@@ -116,7 +116,7 @@ class LanguageTranslator:
                     translated_parts.append('')
             return '\n\n'.join(translated_parts)
         except Exception as e:
-            print(f"[Translator] translate_response error: {e}")
+            print(f"translate_response error: {e}")
             return self.translate_text(text, target_lang)
 
     def translate_faq(self, faq_item, target_lang):
@@ -133,7 +133,7 @@ class LanguageTranslator:
                 'answer':   self.translate_text(faq_item.get('answer', ''),   target_lang),
             }
         except Exception as e:
-            print(f"[Translator] translate_faq error: {e}")
+            print(f"translate_faq error: {e}")
             return faq_item
 
     def get_language_name(self, lang_code):
@@ -144,19 +144,3 @@ class LanguageTranslator:
 
     def is_google_supported(self, lang_code):
         return lang_code in self.google_supported
-
-
-if __name__ == "__main__":
-    tr = LanguageTranslator()
-    tests = [
-        ("प्याज का भाव क्या है?", "Hindi input"),
-        ("வெங்காயம் விலை என்ன?",  "Tamil input"),
-        ("ਕਣਕ ਦਾ ਭਾਅ ਕੀ ਹੈ?",    "Punjabi input"),
-    ]
-    for text, label in tests:
-        translated, lang = tr.translate_to_english(text)
-        print(f"\n[{label}]")
-        print(f"  Original ({lang}): {text}")
-        print(f"  English:          {translated}")
-    print("\n[EN→TA] Onion price in Tamil Nadu:")
-    print(" ", tr.translate_text("Onion price in Tamil Nadu is ₹800 per quintal.", "ta"))

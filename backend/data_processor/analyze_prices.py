@@ -16,9 +16,7 @@ class PriceAnalyzer:
         try:
             if os.path.exists(self.data_path):
                 self.df = pd.read_csv(self.data_path)
-                print(f"✅ Loaded market data: {len(self.df)} records from {self.data_path}")
                 self.standardize_columns()
-                # Clean commodity names — remove "Cleaned " prefix from names
                 if 'Commodity' in self.df.columns:
                     self.df['Commodity'] = self.df['Commodity'].str.replace(r'^Cleaned\s+', '', regex=True).str.strip()
                 if 'Arrival Date' in self.df.columns:
@@ -27,10 +25,9 @@ class PriceAnalyzer:
                     self.df['Arrival Date'] = pd.to_datetime(self.df['date'], format='%d-%m-%Y', errors='coerce')
                 return True
             else:
-                print(f"⚠️ Market data file not found at: {self.data_path}")
                 return self.create_combined_data()
         except Exception as e:
-            print(f"❌ Error loading market data: {e}")
+            print(f"Error loading market data: {e}")
             self.df = pd.DataFrame()
             return False
 
@@ -59,36 +56,28 @@ class PriceAnalyzer:
                         if 'Commodity' not in df_crop.columns:
                             df_crop['Commodity'] = crop_name
                         data_frames.append(df_crop)
-                        print(f"  ✅ Loaded: {file}")
                     except Exception as e:
-                        print(f"  ❌ Error loading {file}: {e}")
+                        print(f"Error loading {file}: {e}")
                 if data_frames:
                     self.df = pd.concat(data_frames, ignore_index=True)
                     self.standardize_columns()
                     os.makedirs(os.path.dirname(self.data_path), exist_ok=True)
                     self.df.to_csv(self.data_path, index=False)
-                    print(f"✅ Created combined market data with {len(self.df)} records")
                     return True
             return False
         except Exception as e:
-            print(f"❌ Error creating combined data: {e}")
+            print(f"Error creating combined data: {e}")
             return False
 
     def get_crop_price(self, crop, state=None, market=None):
-        """Get latest price for a specific crop in a specific state.
-        Returns error if crop not found OR if state not found for that crop.
-        Never falls back to random data.
-        """
         try:
             if self.df is None or len(self.df) == 0:
                 if not self.load_data():
                     return {"error": "Market data not available"}
 
-            # ── Step 1: Find crop in dataset ──────────────────────────────────
             crop_mask = self.df['Commodity'].str.contains(crop, case=False, na=False)
             crop_results = self.df[crop_mask].copy()
 
-            # Flexible crop search — try individual words only if multi-word crop
             if len(crop_results) == 0:
                 crop_words = [w for w in crop.lower().split() if len(w) > 3]
                 for word in crop_words:
@@ -97,21 +86,18 @@ class PriceAnalyzer:
                     if len(crop_results) > 0:
                         break
 
-            # Crop not found at all
             if len(crop_results) == 0:
                 available = self.get_available_crops()
                 return {
-                    "error": f"crop_not_found",
+                    "error": "crop_not_found",
                     "crop": crop,
                     "available_crops": available[:15]
                 }
 
-            # ── Step 2: Filter by state if provided ───────────────────────────
             if state:
                 state_mask = crop_results['State'].str.contains(state, case=False, na=False)
                 state_results = crop_results[state_mask].copy()
 
-                # State not found for this crop — do NOT fall back
                 if len(state_results) == 0:
                     available_states = sorted(crop_results['State'].dropna().unique().tolist())
                     return {
@@ -123,17 +109,14 @@ class PriceAnalyzer:
 
                 result = state_results
             else:
-                # No state given — return latest overall but flag it
                 result = crop_results
 
-            # ── Step 3: Filter by market if provided ──────────────────────────
             if market:
                 mkt_mask = result['Market'].str.contains(market, case=False, na=False)
                 mkt_results = result[mkt_mask].copy()
                 if len(mkt_results) > 0:
                     result = mkt_results
 
-            # ── Step 4: Return latest record ──────────────────────────────────
             if 'Arrival Date' not in result.columns:
                 result['Arrival Date'] = pd.Timestamp.now()
 
@@ -283,16 +266,3 @@ class PriceAnalyzer:
             return results[['Commodity', 'State', 'Market', 'Modal Price']].drop_duplicates().head(20).to_dict('records')
         except Exception as e:
             return {"error": str(e)}
-
-
-if __name__ == "__main__":
-    analyzer = PriceAnalyzer()
-    print("\n" + "="*50)
-    print("FARMBUDDY PRICE ANALYZER TEST")
-    print("="*50)
-    print("\n📊 Test: Onion price in Maharashtra")
-    print(analyzer.get_crop_price("Onion", "Maharashtra"))
-    print("\n📊 Test: Sunflower price in Uttar Pradesh (should fail gracefully)")
-    print(analyzer.get_crop_price("Sunflower", "Uttar Pradesh"))
-    print("\n📊 Test: Walnut price (crop not in dataset)")
-    print(analyzer.get_crop_price("Walnut"))

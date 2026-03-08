@@ -4,10 +4,8 @@ from datetime import datetime
 
 class FrameExtractor:
     def __init__(self):
-        # Use absolute path anchored to this file's location so it works
-        # regardless of where Python is launched from
         self.current_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root     = os.path.dirname(self.current_dir)          # backend/  -> project root
+        project_root     = os.path.dirname(self.current_dir)
         self.output_dir  = os.path.join(project_root, 'uploads', 'frames')
         os.makedirs(self.output_dir, exist_ok=True)
 
@@ -21,9 +19,7 @@ class FrameExtractor:
         if not cap.isOpened():
             return frames
 
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        fps = cap.get(cv2.CAP_PROP_FPS)
-
+        fps         = cap.get(cv2.CAP_PROP_FPS)
         frame_count = 0
         saved_count = 0
 
@@ -36,7 +32,6 @@ class FrameExtractor:
                 timestamp = frame_count / fps if fps > 0 else 0
                 filename  = f"frame_{saved_count:04d}_{datetime.now().strftime('%Y%m%d_%H%M%S%f')}.jpg"
                 filepath  = os.path.join(self.output_dir, filename)
-
                 cv2.imwrite(filepath, frame)
                 frames.append({
                     'path':         filepath,
@@ -76,13 +71,11 @@ class FrameExtractor:
                 filename = f"keyframe_{i:06d}_{datetime.now().strftime('%H%M%S%f')}.jpg"
                 filepath = os.path.join(self.output_dir, filename)
                 cv2.imwrite(filepath, frame)
-
                 frames.append({
                     'path':         filepath,
                     'frame_number': i,
                     'filename':     filename
                 })
-
                 if len(frames) >= num_frames:
                     break
 
@@ -109,7 +102,6 @@ class FrameExtractor:
                 filename = f"time_{current_time:.1f}s_{datetime.now().strftime('%H%M%S%f')}.jpg"
                 filepath = os.path.join(self.output_dir, filename)
                 cv2.imwrite(filepath, frame)
-
                 frames.append({
                     'path':     filepath,
                     'time':     current_time,

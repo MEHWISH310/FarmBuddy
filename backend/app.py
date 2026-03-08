@@ -155,12 +155,14 @@ def load_faqs():
     return []
 
 
+PRICE_WORDS = {'price', 'rate', 'cost', 'market', 'mandi', 'bhav', 'today', 'current'}
+
 def faq_score(query_words, faq):
     text = (faq.get('question', '') + ' ' + faq.get('answer', '') + ' ' + ' '.join(faq.get('tags', []))).lower()
     return sum(1 for w in query_words if w in text)
 
 
-def search_faq(english_query, threshold=2):
+def search_faq(english_query, threshold=3):
     faqs = load_faqs()
     if not faqs:
         return None
@@ -170,6 +172,9 @@ def search_faq(english_query, threshold=2):
     words = [w for w in re.findall(r'\w+', english_query.lower()) if w not in stop and len(w) > 2]
 
     if not words:
+        return None
+
+    if any(w in PRICE_WORDS for w in words):
         return None
 
     scored = [(faq_score(words, faq), faq) for faq in faqs]

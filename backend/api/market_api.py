@@ -13,10 +13,8 @@ def get_price():
     crop = request.args.get('crop')
     state = request.args.get('state')
     market = request.args.get('market')
-    
     if not crop:
         return jsonify({"error": "Please provide crop name"}), 400
-    
     result = analyzer.get_crop_price(crop, state, market)
     return jsonify(result)
 
@@ -25,10 +23,8 @@ def get_trend():
     crop = request.args.get('crop')
     state = request.args.get('state')
     days = int(request.args.get('days', 30))
-    
     if not crop or not state:
         return jsonify({"error": "Please provide crop and state"}), 400
-    
     trend = analyzer.get_price_trend(crop, state, days)
     return jsonify(trend)
 

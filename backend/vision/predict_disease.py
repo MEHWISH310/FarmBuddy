@@ -32,14 +32,12 @@ class DiseasePredictor:
         self.class_labels = None
         self._load()
 
-    # ── File finder ───────────────────────────────────────────────────────────
     def find_file(self, paths, description):
         for path in paths:
             abs_path = os.path.abspath(path)
             if os.path.exists(abs_path):
-                logger.info(f"Found {description} at: {abs_path}")
                 return abs_path
-        logger.error(f"{description} not found in: {paths}")
+        logger.error(f"{description} not found")
         return None
 
     @staticmethod
@@ -53,7 +51,6 @@ class DiseasePredictor:
     def _to_lookup_key(raw_key):
         return raw_key.replace('___', ' ').replace('_', ' ').lower().strip()
 
-    # ── Model loading ─────────────────────────────────────────────────────────
     def _load(self):
         try:
             model_path   = self.find_file(self.model_paths,         'model file')
@@ -65,15 +62,13 @@ class DiseasePredictor:
             with open(indices_path, 'rb') as f:
                 class_indices = pickle.load(f)
 
-            self.class_names  = {v: k                       for k, v in class_indices.items()}
-            self.class_labels = {v: self._format_label(k)  for k, v in class_indices.items()}
+            self.class_names  = {v: k                      for k, v in class_indices.items()}
+            self.class_labels = {v: self._format_label(k) for k, v in class_indices.items()}
 
             self.model = self._load_model(model_path, len(class_indices))
 
             if self.model is None:
-                logger.error('All load strategies failed')
                 self.model = self._rebuild_model(len(class_indices))
-                logger.warning('Using rebuilt model with random weights')
             else:
                 logger.info(f'Model ready with {len(class_indices)} classes')
 
@@ -85,23 +80,18 @@ class DiseasePredictor:
 
     def _load_model(self, model_path, num_classes):
         try:
-            logger.info('Strategy 1: compile=False')
             m = tf.keras.models.load_model(model_path, compile=False)
-            logger.info('Strategy 1 SUCCESS')
             return m
         except Exception as e:
             logger.warning(f'Strategy 1 failed: {e}')
 
         try:
-            logger.info('Strategy 2: default')
             m = tf.keras.models.load_model(model_path)
-            logger.info('Strategy 2 SUCCESS')
             return m
         except Exception as e:
             logger.warning(f'Strategy 2 failed: {e}')
 
         try:
-            logger.info('Strategy 3: custom_objects InputLayer fix')
             from tensorflow.keras.layers import InputLayer
             class CompatInputLayer(InputLayer):
                 def __init__(self, *args, **kwargs):
@@ -112,17 +102,13 @@ class DiseasePredictor:
                 model_path, compile=False,
                 custom_objects={'InputLayer': CompatInputLayer}
             )
-            logger.info('Strategy 3 SUCCESS')
             return m
         except Exception as e:
             logger.warning(f'Strategy 3 failed: {e}')
 
         try:
-            logger.info('Strategy 4: weights-only')
-            import h5py
             model = self._rebuild_model(num_classes)
             model.load_weights(model_path, by_name=True, skip_mismatch=True)
-            logger.info('Strategy 4 SUCCESS')
             return model
         except Exception as e:
             logger.warning(f'Strategy 4 failed: {e}')
@@ -147,44 +133,34 @@ class DiseasePredictor:
                   metrics=['accuracy'])
         return m
 
-    # ── Preprocessing ─────────────────────────────────────────────────────────
     def _pil_to_array(self, pil_img):
-        """Resize PIL image to 224x224 and normalise to [0,1]."""
         pil_img = pil_img.resize((224, 224), PILImage.LANCZOS)
         return np.array(pil_img, dtype=np.float32) / 255.0
 
     def preprocess_image(self, img_path):
-        """Single-image preprocessing — used by the image endpoint."""
         if not os.path.exists(img_path):
             raise FileNotFoundError(f'Image not found: {img_path}')
         pil_img = PILImage.open(img_path).convert('RGB')
         arr = self._pil_to_array(pil_img)
-        return np.expand_dims(arr, axis=0)   # (1, 224, 224, 3)
+        return np.expand_dims(arr, axis=0)
 
     def _tta_batch(self, img_path):
-        """
-        Test-Time Augmentation — return a batch of 5 variants of the frame.
-        Averaging predictions over these variants reduces noise significantly.
-        """
         pil_img = PILImage.open(img_path).convert('RGB')
         w, h    = pil_img.size
-
-        # Centre-crop coordinates (80 % of frame)
-        cw, ch = int(w * 0.80), int(h * 0.80)
-        l,  t  = (w - cw) // 2, (h - ch) // 2
+        cw, ch  = int(w * 0.80), int(h * 0.80)
+        l,  t   = (w - cw) // 2, (h - ch) // 2
         center_crop = pil_img.crop((l, t, l + cw, t + ch))
 
         variants = [
-            center_crop,                                                    # 1. centre crop
-            pil_img,                                                        # 2. full frame
-            pil_img.crop((l, 0, l + cw, ch)),                              # 3. top crop
-            center_crop.transpose(PILImage.FLIP_LEFT_RIGHT),               # 4. h-flip
-            ImageEnhance.Brightness(center_crop).enhance(1.15),            # 5. brighter
+            center_crop,
+            pil_img,
+            pil_img.crop((l, 0, l + cw, ch)),
+            center_crop.transpose(PILImage.FLIP_LEFT_RIGHT),
+            ImageEnhance.Brightness(center_crop).enhance(1.15),
         ]
 
-        return np.stack([self._pil_to_array(v) for v in variants], axis=0)  # (5,224,224,3)
+        return np.stack([self._pil_to_array(v) for v in variants], axis=0)
 
-    # ── Single image predict ──────────────────────────────────────────────────
     def predict(self, img_path):
         try:
             if self.model is None:
@@ -203,7 +179,6 @@ class DiseasePredictor:
             lookup_key   = self._to_lookup_key(raw_key)
             treatment    = self.get_treatment(lookup_key, display_name)
 
-            logger.info(f'Predicted: {display_name} ({confidence*100:.2f}%)')
             return {'disease': display_name, 'confidence': confidence,
                     'treatment': treatment, 'success': True}
 
@@ -212,15 +187,7 @@ class DiseasePredictor:
             return {'disease': 'error', 'confidence': 0.0,
                     'treatment': f'Error: {e}', 'error': str(e)}
 
-    # ── Video predict ─────────────────────────────────────────────────────────
     def predict_from_video(self, video_path, frame_extractor=None):
-        """
-        High-accuracy video prediction using:
-          1. 20 evenly-spaced key frames
-          2. Test-Time Augmentation (5 variants per frame = 100 predictions)
-          3. Confidence² weighted voting — high-confidence frames dominate
-          4. Low-confidence predictions (<40%) discarded as noise
-        """
         try:
             if self.model is None:
                 self._load()
@@ -233,15 +200,12 @@ class DiseasePredictor:
                 from vision.frame_extractor import FrameExtractor
                 frame_extractor = FrameExtractor()
 
-            logger.info(f'Extracting frames from: {video_path}')
             frames = frame_extractor.extract_key_frames(video_path, num_frames=20)
 
             if not frames:
                 return {'disease': 'unknown', 'confidence': 0.0,
                         'treatment': 'Could not extract frames from video.',
                         'error': 'No frames extracted', 'success': False}
-
-            logger.info(f'Running TTA on {len(frames)} frames (5 variants each)…')
 
             frame_predictions = []
             extracted_paths   = []
@@ -251,10 +215,9 @@ class DiseasePredictor:
                 extracted_paths.append(frame_path)
 
                 try:
-                    # TTA: run 5 variants through the model in one batch call
-                    batch      = self._tta_batch(frame_path)        # (5,224,224,3)
-                    preds      = self.model.predict(batch, verbose=0)  # (5, num_classes)
-                    avg_preds  = np.mean(preds, axis=0)             # average over variants
+                    batch      = self._tta_batch(frame_path)
+                    preds      = self.model.predict(batch, verbose=0)
+                    avg_preds  = np.mean(preds, axis=0)
                     pred_class = int(np.argmax(avg_preds))
                     confidence = float(np.max(avg_preds))
 
@@ -269,13 +232,10 @@ class DiseasePredictor:
                         'confidence':   confidence,
                         'treatment':    treatment,
                     })
-                    logger.info(f'  Frame {frame.get("frame_number",0)}: '
-                                f'{display_name} ({confidence*100:.1f}%)')
 
                 except Exception as fe:
-                    logger.warning(f'  Frame error: {fe}')
+                    logger.warning(f'Frame error: {fe}')
 
-            # Clean up frame files
             for path in extracted_paths:
                 try:
                     if os.path.exists(path):
@@ -288,14 +248,10 @@ class DiseasePredictor:
                         'treatment': 'Could not analyse any frames.',
                         'error': 'All frame predictions failed', 'success': False}
 
-            # ── Aggregation ───────────────────────────────────────────────────
-            # Step 1: drop low-confidence noise (< 40%)
             THRESHOLD    = 0.40
-            strong_preds = [fp for fp in frame_predictions
-                            if fp['confidence'] >= THRESHOLD]
+            strong_preds = [fp for fp in frame_predictions if fp['confidence'] >= THRESHOLD]
             working      = strong_preds if len(strong_preds) >= 3 else frame_predictions
 
-            # Step 2: confidence² weighted scoring
             disease_scores = {}
             disease_counts = Counter()
             for fp in working:
@@ -303,13 +259,11 @@ class DiseasePredictor:
                 disease_counts[d] += 1
                 disease_scores[d]  = disease_scores.get(d, 0.0) + fp['confidence'] ** 2
 
-            # Step 3: pick winner
             top_disease    = max(disease_scores, key=disease_scores.get)
             top_confs      = [fp['confidence'] for fp in frame_predictions
                               if fp['disease'] == top_disease]
             avg_confidence = float(np.mean(top_confs))
 
-            # Retrieve treatment
             raw_key = None
             for k, v in self.class_labels.items():
                 if v == top_disease:
@@ -318,16 +272,10 @@ class DiseasePredictor:
             lookup_key = self._to_lookup_key(raw_key) if raw_key else top_disease.lower()
             treatment  = self.get_treatment(lookup_key, top_disease)
 
-            # Summary string
             unique_diseases = disease_counts.most_common(3)
             total           = len(working)
             video_summary   = ', '.join(
                 f"{d} ({c}/{total} frames)" for d, c in unique_diseases
-            )
-
-            logger.info(
-                f'Final: {top_disease} | avg conf {avg_confidence*100:.1f}% | '
-                f'{disease_counts[top_disease]}/{total} frames'
             )
 
             return {
@@ -347,7 +295,6 @@ class DiseasePredictor:
                     'treatment': f'Error: {e}',
                     'error': str(e), 'success': False}
 
-    # ── Treatment database ────────────────────────────────────────────────────
     def get_treatment(self, lookup_key, display_name):
         treatments = {
             'apple apple scab': 'Apply fungicides containing copper oxychloride or myclobutanil. Remove infected leaves. Ensure good air circulation.',
@@ -410,9 +357,3 @@ class DiseasePredictor:
                 f'(2) Apply appropriate fungicide or bactericide. '
                 f'(3) Improve air circulation and avoid overhead watering. '
                 f'(4) Consult your local agricultural extension officer.')
-
-
-if __name__ == '__main__':
-    predictor = DiseasePredictor()
-    print('Model loaded:', predictor.model is not None)
-    print('Classes:', len(predictor.class_names) if predictor.class_names else 0)

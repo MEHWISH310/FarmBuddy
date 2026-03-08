@@ -21,7 +21,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(VIDEO_UPLOAD_DIR, exist_ok=True)
 
 from nlp.translator import LanguageTranslator
-from nlp.disease_matcher import DiseaseMatcher          # ← NEW
+from nlp.disease_matcher import DiseaseMatcher
 from data_processor.analyze_prices import PriceAnalyzer
 from vision.predict_disease import DiseasePredictor
 from vision.frame_extractor import FrameExtractor
@@ -29,13 +29,13 @@ from vision.frame_extractor import FrameExtractor
 app = Flask(__name__)
 CORS(app, origins="*", supports_credentials=False)
 
-translator       = LanguageTranslator()
-price_analyzer   = PriceAnalyzer()
+translator        = LanguageTranslator()
+price_analyzer    = PriceAnalyzer()
 disease_predictor = DiseasePredictor()
-frame_extractor  = FrameExtractor()
-disease_matcher  = DiseaseMatcher()                     # ← NEW
+frame_extractor   = FrameExtractor()
+disease_matcher   = DiseaseMatcher()
 
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_EXTENSIONS       = {'png', 'jpg', 'jpeg', 'gif'}
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv', 'webm', '3gp'}
 
 def allowed_file(filename):
@@ -45,7 +45,6 @@ def allowed_video_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_VIDEO_EXTENSIONS
 
 
-# ─── Dynamically load available crops from CSV files ─────────────────────────
 def get_available_crops():
     crops = []
     search_dirs = [
@@ -65,7 +64,6 @@ def get_available_crops():
     return crops
 
 
-# ─── All Indian states ────────────────────────────────────────────────────────
 ALL_STATES = [
     'andhra pradesh', 'arunachal pradesh', 'assam', 'bihar', 'chhattisgarh',
     'goa', 'gujarat', 'haryana', 'himachal pradesh', 'jharkhand', 'karnataka',
@@ -85,11 +83,7 @@ STATIC_CROPS = [
     'बाजरा', 'गेहूं', 'चावल', 'प्याज', 'आलू', 'टमाटर', 'सरसों', 'मक्का',
 ]
 
-# ─── Disease symptom keywords for intent detection ───────────────────────────
-# Multilingual: English + Hindi + Tamil + Telugu + Kannada + Bengali + Gujarati
-# + Marathi + Punjabi + Malayalam
 DISEASE_SYMPTOM_KEYWORDS = [
-    # English visual/symptom words
     'spot', 'spots', 'lesion', 'lesions', 'blight', 'rust', 'mildew',
     'wilt', 'wilting', 'yellow', 'yellowing', 'brown', 'browning',
     'black', 'white', 'orange', 'purple', 'gray', 'grey', 'silver',
@@ -103,26 +97,17 @@ DISEASE_SYMPTOM_KEYWORDS = [
     'blotch', 'stripe', 'streaks', 'webbing', 'stippling', 'bronze',
     'tattered', 'stunted', 'stunting', 'pale', 'chlorosis', 'deficiency',
     'insect', 'pest', 'mite', 'aphid', 'thrip', 'whitefly',
-    # Hindi
     'रोग', 'बीमारी', 'धब्बे', 'धब्बा', 'पीला', 'भूरा', 'काला', 'सफेद',
     'झुलसा', 'रतुआ', 'फफूंद', 'फफूंदी', 'कीट', 'कीड़ा', 'सूखना',
     'मुरझाना', 'पत्ती', 'पत्तियां', 'नुकसान', 'खराब',
-    # Tamil
     'நோய்', 'பூஞ்சை', 'துரு', 'கருகல்', 'மஞ்சள்', 'பழுப்பு',
     'வெள்ளை', 'கறுப்பு', 'பூச்சி', 'அசுவினி', 'பாதிப்பு',
-    # Telugu
     'వ్యాధి', 'శిలీంద్రం', 'తుప్పు', 'పచ్చపడటం', 'చారలు', 'పురుగు',
-    # Kannada
     'ರೋಗ', 'ಶಿಲೀಂಧ್ರ', 'ತುಕ್ಕು', 'ಹಳದಿ', 'ಕಂದು', 'ಕೀಟ',
-    # Bengali
     'রোগ', 'ছত্রাক', 'হলুদ', 'বাদামি', 'পোকা', 'ক্ষতি',
-    # Gujarati
     'રોગ', 'ફૂગ', 'પીળો', 'ભૂરો', 'જીવાત', 'નુકસાન',
-    # Marathi
     'रोग', 'बुरशी', 'पिवळे', 'तपकिरी', 'कीड', 'नुकसान',
-    # Punjabi
     'ਰੋਗ', 'ਉੱਲੀ', 'ਪੀਲਾ', 'ਭੂਰਾ', 'ਕੀੜਾ', 'ਨੁਕਸਾਨ',
-    # Malayalam
     'രോഗം', 'കുമിൾ', 'മഞ്ഞ', 'തവിട്ട്', 'കീടം', 'നാശം',
 ]
 
@@ -131,10 +116,8 @@ def detect_crop(text):
     text_lower = text.lower()
     dynamic_crops = get_available_crops()
     all_crops = dynamic_crops + [c for c in STATIC_CROPS if c not in dynamic_crops]
-    all_crops_sorted = sorted(all_crops, key=len, reverse=True)
-    for crop in all_crops_sorted:
-        pattern = r'\b' + re.escape(crop) + r'\b'
-        if re.search(pattern, text_lower):
+    for crop in sorted(all_crops, key=len, reverse=True):
+        if re.search(r'\b' + re.escape(crop) + r'\b', text_lower):
             return crop
     return None
 
@@ -142,18 +125,12 @@ def detect_crop(text):
 def detect_state(text):
     text_lower = text.lower()
     for state in sorted(ALL_STATES, key=len, reverse=True):
-        pattern = r'\b' + re.escape(state) + r'\b'
-        if re.search(pattern, text_lower):
+        if re.search(r'\b' + re.escape(state) + r'\b', text_lower):
             return state
     return None
 
 
 def has_symptom_keywords(text):
-    """
-    Check whether the query contains disease/symptom keywords
-    (English or any supported Indian language).
-    Returns True if the text looks like a symptom description.
-    """
     text_lower = text.lower()
     return any(kw in text_lower for kw in DISEASE_SYMPTOM_KEYWORDS)
 
@@ -164,7 +141,45 @@ def maybe_translate(text, target_lang):
     return translator.translate_response(text, target_lang)
 
 
-# ─── Routes ───────────────────────────────────────────────────────────────────
+def load_faqs():
+    for path in [
+        os.path.join(RAW_DATA_DIR, 'faq_dataset.json'),
+        os.path.join(DATA_DIR, 'faq_dataset.json'),
+    ]:
+        if os.path.exists(path):
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception:
+                pass
+    return []
+
+
+def faq_score(query_words, faq):
+    text = (faq.get('question', '') + ' ' + faq.get('answer', '') + ' ' + ' '.join(faq.get('tags', []))).lower()
+    return sum(1 for w in query_words if w in text)
+
+
+def search_faq(english_query, threshold=2):
+    faqs = load_faqs()
+    if not faqs:
+        return None
+
+    stop = {'how', 'to', 'what', 'is', 'the', 'a', 'an', 'for', 'in', 'on',
+            'of', 'i', 'get', 'can', 'do', 'my', 'me', 'are', 'be', 'and'}
+    words = [w for w in re.findall(r'\w+', english_query.lower()) if w not in stop and len(w) > 2]
+
+    if not words:
+        return None
+
+    scored = [(faq_score(words, faq), faq) for faq in faqs]
+    scored.sort(key=lambda x: x[0], reverse=True)
+
+    if scored and scored[0][0] >= threshold:
+        return scored[0][1]
+    return None
+
+
 @app.route('/api/price', methods=['GET'])
 def get_price():
     crop = request.args.get('crop')
@@ -206,18 +221,13 @@ def get_schemes():
 @app.route('/api/faqs', methods=['GET'])
 def get_faqs():
     try:
-        for path in [
-            os.path.join(RAW_DATA_DIR, 'faq_dataset.json'),
-            os.path.join(DATA_DIR, 'faq_dataset.json'),
-        ]:
-            if os.path.exists(path):
-                with open(path, 'r', encoding='utf-8') as f:
-                    faqs = json.load(f)
-                lang = request.args.get('lang', 'en')
-                if lang == 'en':
-                    return jsonify(faqs)
-                return jsonify([translator.translate_faq(faq, lang) for faq in faqs])
-        return jsonify({"error": "FAQ file not found"}), 404
+        faqs = load_faqs()
+        if not faqs:
+            return jsonify({"error": "FAQ file not found"}), 404
+        lang = request.args.get('lang', 'en')
+        if lang == 'en':
+            return jsonify(faqs)
+        return jsonify([translator.translate_faq(faq, lang) for faq in faqs])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -228,15 +238,13 @@ def search_faqs():
         lang = request.args.get('lang', 'en')
         if not query:
             return jsonify({"error": "Please provide search query"}), 400
-        for path in [os.path.join(RAW_DATA_DIR, 'faq_dataset.json'), os.path.join(DATA_DIR, 'faq_dataset.json')]:
-            if os.path.exists(path):
-                with open(path, 'r', encoding='utf-8') as f:
-                    faqs = json.load(f)
-                results = [faq for faq in faqs if query.lower() in faq['question'].lower() or query.lower() in faq['answer'].lower()]
-                if lang != 'en':
-                    results = [translator.translate_faq(r, lang) for r in results]
-                return jsonify(results)
-        return jsonify({"error": "FAQ file not found"}), 404
+        faqs = load_faqs()
+        if not faqs:
+            return jsonify({"error": "FAQ file not found"}), 404
+        results = [faq for faq in faqs if query.lower() in faq['question'].lower() or query.lower() in faq['answer'].lower()]
+        if lang != 'en':
+            results = [translator.translate_faq(r, lang) for r in results]
+        return jsonify(results)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -262,25 +270,41 @@ def get_crop_advisory(crop):
         return jsonify({"error": str(e)}), 500
 
 
-# ─── Chat route ───────────────────────────────────────────────────────────────
 @app.route('/api/chat', methods=['POST'])
 def chat():
     try:
-        data     = request.json
-        query    = data.get('query', '')
-        ui_lang  = data.get('lang', 'en')
+        data    = request.json
+        query   = data.get('query', '')
+        ui_lang = data.get('lang', 'en')
 
         if not query:
             return jsonify({"error": "No query provided"}), 400
 
-        # ── 1. Translate query to English for NLP processing ──────────────────
         english_query, detected_lang = translator.translate_to_english(query)
         combined = english_query.lower() + ' ' + query.lower()
 
-        # Response language: prefer UI language, fall back to detected language
         response_lang = ui_lang if ui_lang != 'en' else detected_lang
 
-        # ── 2. Intent detection ───────────────────────────────────────────────
+        matches = []
+
+        faq_match = search_faq(english_query)
+        if faq_match:
+            response = f"**{faq_match['question']}**\n\n{faq_match['answer']}"
+            intent   = 'faq'
+            entities = {}
+            if response_lang and response_lang != 'en':
+                response = translator.translate_response(response, response_lang)
+            return jsonify({
+                'original_query':    query,
+                'detected_language': detected_lang,
+                'response_language': response_lang,
+                'english_query':     english_query,
+                'intent':            intent,
+                'entities':          entities,
+                'response':          response,
+                'disease_match_count': 0,
+            })
+
         intent = 'general'
         if any(w in combined for w in ['price', 'rate', 'cost', 'market', 'mandi', 'bhav',
                                         'भाव', 'दाम', 'ਭਾਅ', 'விலை', 'ధర']):
@@ -291,9 +315,6 @@ def chat():
         elif any(w in combined for w in ['grow', 'plant', 'fertilizer', 'sow', 'harvest',
                                           'advisory', 'खाद', 'बुवाई', 'फसल', 'ಬೆಳೆ', 'పంట']):
             intent = 'advisory'
-        # Disease intent: keyword from original OR english query
-        # We check AFTER advisory so 'how to treat disease' → advisory-ish queries
-        # don't get hijacked, but symptom-rich queries always get disease intent
         elif (
             has_symptom_keywords(query) or
             has_symptom_keywords(english_query) or
@@ -304,7 +325,6 @@ def chat():
         ):
             intent = 'disease'
 
-        # ── 3. Entity extraction ──────────────────────────────────────────────
         entities       = {}
         detected_crop  = detect_crop(combined)
         detected_state = detect_state(combined)
@@ -315,9 +335,6 @@ def chat():
 
         response = ""
 
-        # ── 4. Intent handlers ────────────────────────────────────────────────
-
-        # ── 4a. Market price ──────────────────────────────────────────────────
         if intent == 'market_price':
             if not detected_crop:
                 available     = get_available_crops()
@@ -363,7 +380,6 @@ def chat():
                     else:
                         response = "😕 Could not fetch price data. Please try again with a clearer crop and state name."
 
-        # ── 4b. Scheme ────────────────────────────────────────────────────────
         elif intent == 'scheme':
             try:
                 schemes_path = os.path.join(RAW_DATA_DIR, 'schemes.json')
@@ -380,10 +396,9 @@ def chat():
                         response = "No schemes found in database."
                 else:
                     response = "Scheme information coming soon! Check back later."
-            except:
+            except Exception:
                 response = "Scheme information coming soon!"
 
-        # ── 4c. Advisory ──────────────────────────────────────────────────────
         elif intent == 'advisory':
             if detected_crop:
                 try:
@@ -411,49 +426,32 @@ def chat():
                             response = f"Advisory for **{detected_crop.title()}** is coming soon! Please consult your local Krishi Vigyan Kendra."
                     else:
                         response = "Advisory data not found. Please consult your local agricultural officer."
-                except Exception as e:
+                except Exception:
                     response = f"Advisory for **{detected_crop.title()}** coming soon!"
             else:
                 response = "Please specify a crop name for advisory. For example: *'How to grow tomatoes?'* or *'wheat fertilizer advice'*"
 
-        # ── 4d. Disease — TEXT / VOICE ────────────────────────────────────────
         elif intent == 'disease':
-            # Try NLP matching against crop_diseases.csv using the English query
             matches = disease_matcher.match_top_n(english_query, n=3)
 
             if matches:
-                # We have at least one good match
                 top_score = matches[0].get('_score', 0)
 
                 if top_score >= 30 and len(matches) == 1:
-                    # High-confidence single match → show full details
-                    response = disease_matcher.format_response(
-                        matches[0],
-                        confidence_pct=min(top_score, 100)
-                    )
+                    response = disease_matcher.format_response(matches[0], confidence_pct=min(top_score, 100))
                 elif top_score >= 30 and len(matches) > 1:
-                    # High-confidence but multiple diseases possible
-                    # (e.g. same symptoms for different crops)
-                    # Show best match in full + brief alternatives
-                    response = disease_matcher.format_response(
-                        matches[0],
-                        confidence_pct=min(top_score, 100)
+                    response = disease_matcher.format_response(matches[0], confidence_pct=min(top_score, 100))
+                    alt = matches[1]
+                    response += (
+                        f"\n\n💡 *Also possible: **{alt.get('possible_disease','')}** "
+                        f"({alt.get('crop','').title()}) — "
+                        f"upload a 📷 photo for confirmation.*"
                     )
-                    if len(matches) > 1:
-                        alt = matches[1]
-                        response += (
-                            f"\n\n💡 *Also possible: **{alt.get('possible_disease','')}** "
-                            f"({alt.get('crop','').title()}) — "
-                            f"upload a 📷 photo for confirmation.*"
-                        )
                 elif top_score >= 15:
-                    # Medium confidence → show top 3 as possibilities
                     response = disease_matcher.format_multi_response(matches)
                 else:
-                    # Low score — not enough info, ask for more details
                     response = disease_matcher.format_multi_response([])
             else:
-                # No match — guide the user to provide more details or upload image
                 if detected_crop:
                     response = (
                         f"🌾 I can see you're asking about **{detected_crop.title()}** diseases, "
@@ -474,13 +472,11 @@ def chat():
                         "Or upload a 📷 **photo** / 🎥 **video** for instant AI-powered diagnosis."
                     )
 
-            # Append photo/video prompt as a soft suggestion (always helpful)
             response += (
                 "\n\n📷 *For a more accurate diagnosis, you can also upload a photo or video "
                 "using the camera/video buttons below.*"
             )
 
-        # ── 4e. General / greeting ────────────────────────────────────────────
         else:
             if any(w in combined for w in ['hi', 'hello', 'namaste', 'hey',
                                             'नमस्ते', 'ਸਤ ਸ੍ਰੀ ਅਕਾਲ', 'வணக்கம்', 'నమస్కారం']):
@@ -500,7 +496,6 @@ def chat():
                 response += "• **Crop advice:** *'how to grow tomatoes?'*\n"
                 response += "• **Disease detection:** Describe symptoms or upload a plant photo/video"
 
-        # ── 5. Translate response to user's language ──────────────────────────
         if response_lang and response_lang != 'en':
             response = translator.translate_response(response, response_lang)
 
@@ -512,8 +507,7 @@ def chat():
             'intent':            intent,
             'entities':          entities,
             'response':          response,
-            # extra metadata for disease text responses
-            'disease_match_count': len(matches) if intent == 'disease' and 'matches' in dir() else 0,
+            'disease_match_count': len(matches) if intent == 'disease' else 0,
         })
 
     except Exception as e:
@@ -522,7 +516,6 @@ def chat():
         return jsonify({"error": str(e)}), 500
 
 
-# ─── Image disease prediction ─────────────────────────────────────────────────
 @app.route('/api/predict-disease', methods=['POST'])
 def predict_disease():
     try:
@@ -553,7 +546,6 @@ def predict_disease():
         return jsonify({"error": str(e)}), 500
 
 
-# ─── Video disease prediction ─────────────────────────────────────────────────
 @app.route('/api/predict-disease-video', methods=['POST'])
 def predict_disease_video():
     try:
@@ -564,9 +556,7 @@ def predict_disease_video():
         if file.filename == '':
             return jsonify({"error": "No file selected"}), 400
         if not allowed_video_file(file.filename):
-            return jsonify({
-                "error": "File type not allowed. Use mp4, avi, mov, mkv, webm, or 3gp"
-            }), 400
+            return jsonify({"error": "File type not allowed. Use mp4, avi, mov, mkv, webm, or 3gp"}), 400
 
         ext       = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else 'mp4'
         filename  = f"video_{int(time.time())}.{ext}"
@@ -593,7 +583,6 @@ def predict_disease_video():
         return jsonify({"error": str(e)}), 500
 
 
-# ─── Translate API ────────────────────────────────────────────────────────────
 @app.route('/api/translate', methods=['POST'])
 def translate_text_api():
     try:
@@ -619,7 +608,6 @@ def get_available_crops_api():
     return jsonify({"crops": get_available_crops()})
 
 
-# ─── Health check ─────────────────────────────────────────────────────────────
 @app.route('/api/health', methods=['GET'])
 def health_check():
     return jsonify({
@@ -630,9 +618,9 @@ def health_check():
         "disease_matcher_loaded": disease_matcher.is_loaded,
         "disease_matcher_records": len(disease_matcher.records),
         "paths": {
-            "project_root":    PROJECT_ROOT,
-            "data_dir":        DATA_DIR,
-            "upload_dir":      UPLOAD_DIR,
+            "project_root":     PROJECT_ROOT,
+            "data_dir":         DATA_DIR,
+            "upload_dir":       UPLOAD_DIR,
             "video_upload_dir": VIDEO_UPLOAD_DIR
         }
     })
@@ -648,21 +636,20 @@ def home():
             "/api/price?crop=onion&state=assam",
             "/api/schemes",
             "/api/faqs?lang=hi",
-            "/api/predict-disease (POST) — image upload",
-            "/api/predict-disease-video (POST) — video upload",
-            "/api/chat (POST) — accepts {query, lang} — supports text/voice disease detection",
-            "/api/translate (POST) — accepts {text, target_lang}",
+            "/api/predict-disease (POST)",
+            "/api/predict-disease-video (POST)",
+            "/api/chat (POST)",
+            "/api/translate (POST)",
         ]
     })
 
 
 if __name__ == '__main__':
-    print("🚀 FarmBuddy Backend Starting...")
-    print(f"📁 Project Root : {PROJECT_ROOT}")
-    print(f"📁 Data Directory: {DATA_DIR}")
-    print(f"📦 Available crops: {get_available_crops()}")
-    print(f"🌐 Supported languages: {list(translator.supported_languages.keys())}")
-    print(f"🔬 Disease matcher loaded: {disease_matcher.is_loaded} "
-          f"({len(disease_matcher.records)} records)")
-    print(f"🌐 Server running on http://127.0.0.1:5000")
+    print("FarmBuddy Backend Starting...")
+    print(f"Project Root : {PROJECT_ROOT}")
+    print(f"Data Directory: {DATA_DIR}")
+    print(f"Available crops: {get_available_crops()}")
+    print(f"Supported languages: {list(translator.supported_languages.keys())}")
+    print(f"Disease matcher loaded: {disease_matcher.is_loaded} ({len(disease_matcher.records)} records)")
+    print(f"Server running on http://127.0.0.1:5000")
     app.run(debug=True, port=5000)

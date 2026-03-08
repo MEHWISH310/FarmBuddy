@@ -18,7 +18,6 @@ const INDIAN_LANGUAGES = {
   'ml': 'മലയാളം',
   'pa': 'ਪੰਜਾਬੀ',
   'or': 'ଓଡ଼ିଆ',
-  'as': 'অসমীয়া',
   'ur': 'اردو',
   'ne': 'नेपाली',
   'ks': 'कॉशुर',
@@ -28,7 +27,7 @@ const INDIAN_LANGUAGES = {
 const VOICE_LANG_MAP = {
   hi:'hi-IN', ta:'ta-IN', te:'te-IN', bn:'bn-IN', mr:'mr-IN',
   gu:'gu-IN', kn:'kn-IN', ml:'ml-IN', pa:'pa-IN', ur:'ur-PK',
-  or:'or-IN', as:'as-IN', ne:'ne-NP', ks:'ur-PK', en:'en-US'
+  or:'or-IN', ne:'ne-NP', ks:'ur-PK', en:'en-US'
 };
 
 // ─── RTL languages ────────────────────────────────────────────────────────────
@@ -117,7 +116,7 @@ async function updateAllUIText(lang) {
   const weatherSpans = document.querySelectorAll('.weather-widget-top span');
   if (weatherSpans.length >= 3) weatherSpans[2].textContent = t('localWeather', lang);
 
-  if (newChatBtn)   newChatBtn.title   = t('newChat', lang);
+  if (newChatBtn)    newChatBtn.title    = t('newChat', lang);
   if (mobileNewChat) mobileNewChat.title = t('newChat', lang);
 
   const emptyHistory = document.querySelector('.empty-history p');
@@ -290,7 +289,7 @@ function setupVoiceInput() {
     voiceBtn.querySelector('i').className = 'fas fa-microphone';
     if (queryInput && queryInput.value.trim()) {
       showNotification(t('voiceCaptured', currentLang), 'success');
-      submitQuery();    // ← voice query goes through the same submitQuery → /api/chat flow
+      submitQuery();
     }
   };
 
@@ -366,17 +365,8 @@ async function analyzeDiseaseImage(file) {
 }
 
 // ─── Disease result display — shared by image, video AND text/voice ───────────
-/**
- * displayDiseaseResult(data, source)
- *   source: 'image' | 'video' | 'text'
- *
- * For text/voice the backend already returns a fully-formatted, translated
- * Markdown response string in data.response (via /api/chat).
- * For image/video results come from /api/predict-disease[-video] with raw fields.
- */
 async function displayDiseaseResult(data, source = 'image') {
 
-  // ── Text / voice: response already formatted + translated by backend ─────
   if (source === 'text') {
     const formattedResponse = formatMarkdown(data.response.replace(/\n/g, '<br>'));
     addMessageToUI(formattedResponse, 'ai', 'FarmBuddy AI');
@@ -384,12 +374,10 @@ async function displayDiseaseResult(data, source = 'image') {
     return;
   }
 
-  // ── Image or video: build rich HTML card ──────────────────────────────────
   const disease    = (data.disease || 'Unknown').replace(/_/g, ' ');
   const confidence = ((data.confidence || 0) * 100).toFixed(2);
   const langName   = INDIAN_LANGUAGES[currentLang] || 'English';
 
-  // Labels translated in parallel
   const [
     titleTr, diseaseLabelTr, confidenceLabelTr, treatmentLabelTr,
     diseaseTr, treatmentTr, noteTr
@@ -519,7 +507,7 @@ async function analyzeDiseaseVideo(file) {
   }
 }
 
-// ─── Submit query (text + voice) ──────────────────────────────────────────────
+// ─── Submit query ─────────────────────────────────────────────────────────────
 async function submitQuery() {
   if (!queryInput) return;
   const query = queryInput.value.trim();
@@ -546,7 +534,6 @@ async function submitQuery() {
 
     if (data.error) { showNotification(`Error: ${data.error}`, 'error'); return; }
 
-    // ── Route disease responses to the shared disease display ─────────────
     if (data.intent === 'disease') {
       await displayDiseaseResult(data, 'text');
     } else {
@@ -604,7 +591,7 @@ async function displayChatResponse(data) {
   saveMessage(html, 'ai');
 }
 
-// ─── Fallback response (server offline) ──────────────────────────────────────
+// ─── Fallback response ────────────────────────────────────────────────────────
 async function generateAndDisplayFallback(query) {
   const q = query.toLowerCase();
   let response = '';
@@ -757,20 +744,19 @@ ${t('qaSchemesIntro', lang)}<br>
 <span style="display:block;padding-left:14px;margin:2px 0;">• ${t('qaSchemesEx4', lang)}</span><br>
 ${t('qaTypeBelow', lang)}`,
 
-    // Disease quick-action: now shows text input prompt + upload option
     disease: () => `<strong>🔍 ${t('qaDiseaseTitle', lang)}</strong><br><br>
 ${t('qaDiseaseTextPrompt', lang) ||
   'You can detect plant diseases in <strong>two ways</strong>:'}<br><br>
 <span style="display:block;padding-left:14px;margin:2px 0;">
-  📝 <strong>${t('qaDiseaseTextWay', lang) || 'Text/Voice'}</strong> — 
+  📝 <strong>${t('qaDiseaseTextWay', lang) || 'Text/Voice'}</strong> —
   ${t('qaDiseaseTextDesc', lang) || 'Describe symptoms, e.g. "tomato leaves have brown spots with yellow rings"'}
 </span>
 <span style="display:block;padding-left:14px;margin:2px 0;">
-  📷 <strong>${t('qaDiseaseImageWay', lang) || 'Photo/Video'}</strong> — 
+  📷 <strong>${t('qaDiseaseImageWay', lang) || 'Photo/Video'}</strong> —
   ${t('qaDiseaseImageDesc', lang) || 'Upload a clear photo or video using the camera/video buttons below'}
 </span><br>
 <span class="translation-note">
-  <i class="fas fa-info-circle"></i> 
+  <i class="fas fa-info-circle"></i>
   ${t('qaDiseaseNote', lang)}
 </span>`,
   };
@@ -797,8 +783,8 @@ window.textToSpeech = async function (button) {
   }
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang   = VOICE_LANG_MAP[currentLang] || 'en-US';
-  utterance.rate   = 1;
+  utterance.lang    = VOICE_LANG_MAP[currentLang] || 'en-US';
+  utterance.rate    = 1;
   utterance.onstart = () => { icon.className = 'fas fa-stop'; button.classList.add('speaking'); };
   utterance.onend   = () => { icon.className = 'fas fa-volume-up'; button.classList.remove('speaking'); };
   utterance.onerror = () => { icon.className = 'fas fa-volume-up'; button.classList.remove('speaking'); };

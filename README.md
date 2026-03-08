@@ -131,10 +131,6 @@ To generate accurate responses.
 * Crop disease detection
 * Priority handling for urgent cases
 
-## Project Status
-
-Under Development
-
 ## Conclusion
 
 FarmBuddy demonstrates how NLP and multimodal technologies can improve agricultural advisory systems. By integrating language processing, image analysis, and video interpretation, the system empowers farmers with accessible and reliable information.
